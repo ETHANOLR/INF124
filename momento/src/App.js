@@ -8,11 +8,13 @@ import Explore from './pages/Explore';
 import Chat from './pages/Chat';
 import Search from './pages/Search';
 import Example from './pages/ExamplePage'
+import Login from './pages/Login';
 
 function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/explore" element={<Explore />} />
