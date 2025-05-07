@@ -74,7 +74,7 @@ const Register = () => {
         
         <div className="register-form-panel">
             <div className="register-form-container">
-            <h2 className="register-logo">Momento</h2>
+            <h2 className="register-logo" onClick={() => navigate('/home')}>Momento</h2>
             <p className="register-subtitle">Create your account</p>
 
             <form onSubmit={handleSubmit}>

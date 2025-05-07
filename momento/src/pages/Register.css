@@ -63,6 +63,11 @@
     font-size: 28px;
     text-align: center;
     margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.register-logo:hover {
+    color: #e05a4d;
 }
 
 .register-subtitle {
