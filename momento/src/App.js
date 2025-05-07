@@ -3,6 +3,11 @@ import './App.css';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
+import Notification from './pages/Notification';
+import Explore from './pages/Explore';
+import Chat from './pages/Chat';
+import Search from './pages/Search';
+import Example from './pages/ExamplePage'
 
 function App() {
   return (
@@ -10,6 +15,11 @@ function App() {
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="/notifications" element={<Notification />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/example" element={<Example />} />
       </Routes>
     </Router>
   );
