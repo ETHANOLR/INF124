@@ -41,7 +41,7 @@ const Login = () => {
         
         <div className="login-form-panel">
             <div className="login-form-container">
-            <h2 className="login-logo">Momento</h2>
+            <h2 className="login-logo" onClick={() => navigate('/home')}>Momento</h2>
             <p className="login-subtitle">Login to your account</p>
           
             {error && <div className="login-error">{error}</div>}
