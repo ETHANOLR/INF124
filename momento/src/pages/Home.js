@@ -5,6 +5,15 @@ import SearchBar from '../components/SearchBar/searchBar';
 import Navbar from '../components/NavBar/navBar';
 import PostCard from '../components/PostCard/PostCard';
 
+/**
+ * Home Page
+ * 
+ * Main landing page that displays a feed of posts based on user preferences.
+ * Features a sidebar with navigation tabs and category filters.
+ * Includes a grid-based post layout with interaction buttons.
+ * Has a floating action button for creating new posts.
+ * TODO: Can infinity see the posts.
+ */
 const Home = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('For You');

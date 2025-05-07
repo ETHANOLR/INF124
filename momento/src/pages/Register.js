@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Register.css';
 
+/**
+ * Register Page
+ * 
+ * Handles new user registration with form validation.
+ * Features a split-screen design with a welcome message and registration form.
+ * Collects email, username, and password with appropriate validation. (TODO: Add authentication)
+ * TODO: Includes social media registration options and links to terms/privacy policies.
+ * Redirects to verification page after successful registration.
+ */
 const Register = () => {
     const [formData, setFormData] = useState({
         email: '',

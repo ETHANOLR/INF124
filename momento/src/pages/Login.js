@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
 
+/**
+ * Login Page
+ * 
+ * Provides user authentication functionality with email and password. (TODO: Add authentication)
+ * Features a split-screen design with a welcome message and login form.
+ * TODO: Includes form validation and social media login options.
+ * Redirects to home page after successful login.
+ */
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
