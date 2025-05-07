@@ -1,13 +1,13 @@
 import React from 'react';
 
-const Explore = () => {
+const Notification = () => {
   return (
     <div>
       {/* Page content goes here */}
-      <h1>Explore Page</h1>
+      <h1>Notification Page</h1>
       <p>Testing for routing</p>
     </div>
   );
 };
 
-export default Explore;
+export default Notification;
