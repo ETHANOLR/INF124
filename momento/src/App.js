@@ -1,20 +1,22 @@
 import logo from './logo.svg';
 import './App.css';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes} from 'react-router-dom';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Notification from './pages/Notification';
 import Explore from './pages/Explore';
 import Chat from './pages/Chat';
 import Search from './pages/Search';
-import Example from './pages/ExamplePage'
+import Example from './pages/ExamplePage';
 import Login from './pages/Login';
+import Register from './pages/Register';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/explore" element={<Explore />} />
