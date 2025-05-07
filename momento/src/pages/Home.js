@@ -1,15 +1,58 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './Home.css';
+import SearchBar from '../components/SearchBar/searchBar';
+import Navbar from '../components/NavBar/navBar';
+import PostCard from '../components/PostCard/PostCard';
 
 const Home = () => {
-  return (
-    <div>
-      {/* Page content goes here */}
-      <h1>Home Page</h1>
-      <Link to="/profile">Go to profile Page</Link>
-      <p>Testing for routing</p>
-    </div>
-  );
-};
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('For You');
+    const [activeCategory, setActiveCategory] = useState(null);
 
-export default Home;
+    // Sample post data
+    const posts = [
+    {
+        id: 1,
+        title: 'Post Title',
+        details: 'Details...',
+        username: 'Username',
+        thumbnail: null, // This place can add image paths
+    },
+    {
+        id: 2,
+        title: 'Post Title',
+        details: 'Details...',
+        username: 'Username',
+        thumbnail: null,
+    },
+    {
+        id: 3,
+        title: 'Post Title',
+        details: 'Details...',
+        username: 'Username',
+        thumbnail: null,
+    },
+    {
+        id: 4,
+        title: 'Post Title',
+        details: 'Details...',
+        username: 'Username',
+        thumbnail: null,
+    },
+    {
+        id: 5,
+        title: 'Post Title',
+        details: 'Details...',
+        username: 'Username',
+        thumbnail: null,
+    },
+    {
+        id: 6,
+        title: 'Post Title',
+        details: 'Details...',
+        username: 'Username',
+        thumbnail: null,
+    }
+    ];
+}
