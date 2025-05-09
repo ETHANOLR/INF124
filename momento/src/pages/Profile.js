@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 import Navbar from '../components/NavBar/navBar';
 import SearchBar from '../components/SearchBar/searchBar';
+import CollectionCard from '../components/CollectionCard/CollectionCard';
 
 /**
  * Profile Page
@@ -53,6 +54,17 @@ const Profile = () => {
         likes: 3200,
         comments: 145
     }
+    ];
+
+    // Mock collection data
+    const collections = [
+      { id: 1, title: "Fashion Inspiration", posts: 32 },
+      { id: 2, title: "Travel Bucket List", posts: 24 },
+      { id: 3, title: "Healthy Recipes", posts: 45 },
+      { id: 4, title: "Home Decor Ideas", posts: 18 },
+      { id: 5, title: "Workout Routines", posts: 15 },
+      { id: 6, title: "Photography Tips", posts: 28 },
+      { id: 7, title: "Favorite Books", posts: 12 },
     ];
     
     // Format numbers over 1000 to K format (e.g., 1.2K)
@@ -164,20 +176,63 @@ const Profile = () => {
                 
                 {/* Posts grid */}
                 <div className="posts-grid">
-                    {posts.map(post => (
-                        <div className="post-item" key={post.id}>
-                            <div className="post-image">
-                                {/* Post image would go here */}
-                            </div>
-                            
-                            <div className="post-details">
-                                <p className="post-caption">{post.caption}</p>
-                                <div className="post-stats">
-                                    <span>{formatNumber(post.likes)} likes • {post.comments} comments</span>
-                                </div>
+                  {activeTab === 'Posts' && posts.map(post => (
+                    <div className="post-item" key={post.id}>
+                        <div className="post-image">
+                            {/* Post image would go here */}
+                        </div>
+                        
+                        <div className="post-details">
+                            <p className="post-caption">{post.caption}</p>
+                            <div className="post-stats">
+                                <span>{formatNumber(post.likes)} likes • {post.comments} comments</span>
                             </div>
                         </div>
-                    ))}
+                    </div>
+                  ))}
+
+                  {activeTab === 'Collections' && collections.map(collection => (
+                    <div className="post-item" key={collection.id}>
+                      <CollectionCard title={collection.title} posts={collection.posts} />
+                      
+                    </div>
+                  ))}
+
+                  {/* Currently just using posts data for mock up */}
+                  {activeTab === 'Liked' && posts.map(post => (
+                    <div className="post-item" key={"LikedPost"+post.id}>
+                      <div className="post-image">
+                          {/* Post image would go here */}
+                      </div>
+                      
+                      <div className="post-details">
+                          <p className="post-caption">{post.caption}</p>
+                          <div className="post-stats">
+                              {/* Generate Random number for likes between 1 to 10 */}
+                              {/* Generate Random number for comments between 20 to 200 */}
+                              {/* To be subsitude by real data */}
+                              <span>{formatNumber(Math.random() * 9 + 1).toFixed(1)} likes • {(Math.random() * 180 + 20).toFixed(0)} comments</span>
+                          </div>
+                      </div>
+                  </div>
+                  ))}
+
+                  {/* Currently just using posts data for mock up */}
+                  {activeTab === 'Tagged' && posts.map(post => (
+                    <div className="post-item" key={"TaggedPost"+post.id}>
+                      <div className="post-image">
+                          {/* Post image would go here */}
+                      </div>
+                      
+                      <div className="post-details">
+                          <p className="post-caption">{post.caption}</p>
+                          <div className="post-stats">
+                            {/* Same as liked post */}
+                            <span>{formatNumber(Math.random() * 9 + 1).toFixed(1)} likes • {(Math.random() * 180 + 20).toFixed(0)} comments</span>
+                          </div>
+                      </div>
+                  </div>
+                  ))}
                 </div>
             </div>
         </div>
