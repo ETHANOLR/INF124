@@ -156,9 +156,31 @@ const SearchPage = () => {
   return (
     <div className="search-page">
       <Navbar />
-      <div className = "search-main-container">
-        <div className = "recent-trending-container"></div>
-        <div className="search-container"></div>
+      <div className="search-main-container">
+        {/* Search input with button 你加一个类似search-input的class */}
+        <div className="search-input-container">
+        </div>
+        {/* Content area for search results */}
+        <div className="content-area">
+          {/* Content will appear here after search */}
+        </div>
+
+        <div className="contents-containers">
+          {/* Left side - Recent searches */}
+          <div className="recent-trending-container">
+            <h3 className="section-title">Recent Searches</h3>
+            {/* 加个列表 */}
+            <div className="recent-searches-list">
+            </div>
+          </div>
+          {/* Right side - Trending Now */}
+          <div className="trending-now-container">
+            <h3 className="section-title">Trending Now</h3>
+            {/* 我感觉这是个tag，可能得弄一个map？ */}
+            <div className="trending-tags">
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
