@@ -1,0 +1,142 @@
+.main-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f5f5f5;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    padding: 20px;
+    gap: 20px;
+}
+
+.content-container {
+    flex: 1;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    margin-bottom: 10px
+}
+
+.section-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.category-bar {
+    width: '100%';
+    display: flex;
+    flex: 1;
+    justify-content: space-between; /* or center/left depending on preference */
+    gap: 0.5rem;
+    flex-wrap: wrap; /* so it wraps on small screens */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+  
+  .category-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: #555;
+  }
+
+  .category-tab:hover{
+    background-color: #f0f0f0;
+  }
+  
+  .category-tab.active {
+    background-color: #ff6f61;
+    color: white;
+  }
+
+.featured-post {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: white;
+}
+
+.post-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.post-thumbnail {
+    height: 150px;
+    background-color: #f0f0f0;
+}
+
+.post-content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.post-title-detial {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.post-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    margin-right: 8px;
+}
+
+.username {
+    font-size: 24px;
+    color: #555;
+}
+
+.popular-post-container {
+    display: flex;
+    border-radius: 10px;
+    flex-direction: row;
+    overflow: hidden;
+    gap: 20px;
+    flex-wrap: wrap;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: white;
+    justify-content: space-between;
+}
+
+.popular-post {
+    width: 400px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: white;
+    transition: transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 10px;
+}
+
