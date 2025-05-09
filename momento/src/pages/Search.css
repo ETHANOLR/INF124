@@ -7,10 +7,13 @@
 
 .search-main-container {
   display: flex;
-  flex: 1;
-  padding: 20px;
-  gap: 20px;
-  flex-direction: row;
+  flex-direction: column;
+  max-width: 1200px;
+  width: 90%;
+  margin: 20px auto;
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
 }
 
 .recent-trending-container {
@@ -27,4 +30,29 @@
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Content area */
+.content-area {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid #eaeaea;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* 一个包裹Recent Searches和Trending Now两个区域的containers */
+.contents-containers {
+  display: flex;
+  width: 100%;
+  gap: 20px;
+}
+
+.recent-trending-container, .trending-now-container {
+  flex: 1;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #eaeaea;
+  min-height: 300px;
 }
