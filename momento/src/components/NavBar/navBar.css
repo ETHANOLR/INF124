@@ -18,4 +18,37 @@
     display: flex;
     gap: 10px;
 }
-  
+
+/* Login button styling for non-authenticated users */
+.login-button-container {
+    display: flex;
+    align-items: center;
+}
+
+.login-nav-button {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 10px 25px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.login-nav-button:hover {
+    background-color: #e05a4d;
+}
+
+/* Responsive design adjustments */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 10px 16px;
+    }
+    
+    .login-nav-button {
+        padding: 8px 20px;
+        font-size: 14px;
+    }
+}
