@@ -1,6 +1,6 @@
 # Momento
 
-<img src="src/Momento_Transparent.png" alt="Momento Logo" width="200"/>
+<img src="./src/Momento_Transparent.png" alt="Momento Logo" width="200"/>
 
 ## Introduction
 
