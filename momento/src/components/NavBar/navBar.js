@@ -5,6 +5,7 @@ import { CircleButton } from '../buttons/buttons';
 import SearchBar from '../SearchBar/searchBar';
 import './navBar.css';
 import { AuthContext } from '../../contexts/AuthContext';
+import logoImage from '../../Momento_Transparent.png'; // Import the logo image
 
 /**
  * Navbar Component
@@ -24,7 +25,10 @@ function Navbar() {
   
     return (
         <nav className="navbar">
-            <div className="logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>Momento</div>
+            <div className="logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
+                <img src={logoImage} alt="Momento Logo" className="logo-image" />
+                <span className="logo-text">Momento</span>
+            </div>
 
             <SearchBar
                 placeholder="Search for ..."

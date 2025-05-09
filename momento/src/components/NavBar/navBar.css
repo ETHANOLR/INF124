@@ -10,9 +10,20 @@
 }
   
 .logo {
+    display: flex;
+    align-items: center;
     font-weight: bold;
     font-size: 20px;
     color: #ff6f61;
+}
+
+.logo-image {
+    height: 30px;
+    margin-right: 8px;
+}
+
+.logo-text {
+    display: inline-block;
 }
   
 .nav-buttons {
@@ -84,6 +95,7 @@
         flex-basis: 100%;
         text-align: center;
         margin-bottom: 8px;
+        justify-content: center;
     }
     
     .search-container {
