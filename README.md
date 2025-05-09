@@ -1,5 +1,7 @@
 # Momento
 
+<img src="src/Momento_Transparent.png" alt="Momento Logo" width="200"/>
+
 ## Introduction
 
 Momento is a powerful social media platform designed to provide a seamless user experience for creating, sharing, and discovering content. With a mobile-first responsive design, the platform ensures excellent user experience across all devices. Whether it's real-time messaging, multimedia content sharing, or social interactions, Momento meets the needs of modern social network users.
