@@ -159,18 +159,46 @@ const SearchPage = () => {
       <div className="search-main-container">
         {/* Search input with button 你加一个类似search-input的class */}
         <div className="search-input-container">
+          {/* SideBar */}
+          <div className="category-bar">
+            {categories.map((cat) => (
+              <div
+              key={cat}
+              className={`category-tab ${searchCategory === cat ? 'active' : ''}`}
+              onClick={() => handleSearchCategory(cat)}
+              >
+                {cat}
+              </div>
+            ))}
+          </div>
         </div>
         {/* Content area for search results */}
-        <div className="content-area">
-          {/* Content will appear here after search */}
-        </div>
-
         <div className="contents-containers">
           {/* Left side - Recent searches */}
           <div className="recent-trending-container">
             <h3 className="section-title">Recent Searches</h3>
             {/* 加个列表 */}
             <div className="recent-searches-list">
+              <ul>
+                {recentSearches.map((item, index) => (
+                  <li key={index} className="search-item">
+                    {typeof item === 'object' && item !== null && 'username' in item ? (
+                      <div className="user-search">
+                        <img
+                          src={item.avatar || 'https://via.placeholder.com/32'}
+                          alt="Avatar"
+                          className="avatar"
+                        />
+                        <span className="username">{item.username}</span>
+                      </div>
+                    ) : (
+                      <span>{item}</span>
+                    )}
+                    <button className="close-btn">✕</button>
+                  </li>
+                ))}
+              </ul>
+              <Button text="Clear All" type="secondary" onClick={handleClearAll}/>
             </div>
           </div>
           {/* Right side - Trending Now */}
@@ -178,6 +206,53 @@ const SearchPage = () => {
             <h3 className="section-title">Trending Now</h3>
             {/* 我感觉这是个tag，可能得弄一个map？ */}
             <div className="trending-tags">
+              <ul>
+                {trendingTags.map((item, i) => (
+                  <li key={i}>
+                    <div>
+                      <strong>{item.tag}</strong>
+                      <div className="subtext">{item.posts}</div>
+                    </div>
+                    <Button text="View" type="secondary" onClick = {() => handleSearch(item.tag)}/>
+                  </li>
+                ))}
+              </ul>
+              <Button text="View All" onClick={() => handleSearch(allTrendingTafs)}/>
+            </div>
+          </div>
+          <div className="history-container">
+            <div className="content-area">
+            {/* Content will appear here after search */}
+              <div className = "search-result-section">
+                <InfiniteScroll
+                  loadMore={loadMorePosts}
+                  hasMore={hasMore}
+                  isLoading={isLoading}
+                  loader={<div className="posts-loader">Loading more posts...</div>}
+                  endMessage={<p className="posts-end-message">You've seen all posts</p>}
+                >
+                  <div className = "post-grid">
+                    {posts.map((post) => (
+                      <div key={post.id} className="post-item">
+                        <div className="post-thumbnail"></div>
+                        <div className="post-content">
+                          <h3 className="post-title">{post.title}</h3>
+                          <p className="post-details">{post.details}</p>
+                          <div className="post-user">
+                              <div className="user-avatar"></div>
+                              <span className="username">{post.username}</span>
+                          </div>
+                          <div className="post-actions">
+                              <button className="action-button" onClick={() => handleLike(post.id)}>Like</button>
+                              <button className="action-button" onClick={() => handleComment(post.id)}>Comment</button>
+                              <button className="action-button" onClick={() => handleShare(post.id)}>Share</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </InfiniteScroll>
+              </div>
             </div>
           </div>
         </div>

@@ -34,6 +34,7 @@
 
 /* Content area */
 .content-area {
+  height: 100%;
   width: 100%;
   min-height: 50px;
   border: 1px solid #eaeaea;
@@ -55,4 +56,135 @@
   padding: 20px;
   border: 1px solid #eaeaea;
   min-height: 300px;
+}
+
+.history-container {
+  flex: 2;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #eaeaea;
+  height: calc(100vh - 150px);
+  overflow-y: auto;
+}
+
+.infinite-scroll-container {
+  height: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+.search-result-section {
+  height: 100%;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.user-search {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.username {
+  font-size: 14px;
+  color: #333;
+}  
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.subtext {
+  font-size: 0.85rem;
+  color: #777;
+  margin-top: 8px;
+}
+
+.category-bar {
+  width: '100%';
+  display: flex;
+  justify-content: space-between; /* or center/left depending on preference */
+  gap: 0.5rem;
+  flex-wrap: wrap; /* so it wraps on small screens */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.category-tab {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #555;
+}
+
+.category-tab:hover{
+  background-color: #f0f0f0;
+}
+
+.category-tab.active {
+  background-color: #ff6f61;
+  color: white;
+}
+
+/* Post grid */
+.post-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.post-item {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  background-color: white;
+}
+
+.post-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Loading indicators */
+.posts-loader {
+  padding: 20px;
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+}
+
+.posts-end-message {
+  padding: 20px;
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+  font-style: italic;
 }
