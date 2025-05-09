@@ -47,7 +47,6 @@ Momento is a powerful social media platform designed to provide a seamless user 
 
 ### Notification System
 - **Push Notifications** for important activities
-- **Email Notifications** for significant events
 - **In-app Notification Center**
 - **Customizable Notification Preferences**
 
@@ -78,9 +77,72 @@ Momento is a powerful social media platform designed to provide a seamless user 
 5. **Connect Users**: Follow friends and interesting creators
 6. **Engage**: Like, comment, and share favorite content
 
+## Tech Stack and Development
+
+### Core Technologies
+- **Frontend Framework**: React.js
+- **Routing**: React Router DOM
+
+### Development Setup
+1. Clone the repository:
+   ```
+   git clone [repository URL]
+   cd momento
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   npm install react-router-dom
+   ```
+
+3. Start development server:
+   ```
+   npm start
+   ```
+
+
 ## Development Status
 
 Momento is currently in the development stage. The frontend interface design has been completed, and backend functionality is being implemented. We welcome feedback from developers and test users to help us build a better product.
+
+
+### Feature Implementation Status
+
+#### User Interface Components
+| Feature | Status | Notes |
+| ------- | ------ | ----- |
+| Homepage Layout | ✅ Completed | Responsive design implemented |
+| Navigation Menu | ✅ Completed | Mobile and desktop versions |
+| User Profile UI | ✅ Completed | Avatar, bio, stats sections |
+| Post Creation Modal | ✅ Completed | Text and media upload interface |
+| Search Interface | ✅ Completed | Search bar and filters UI |
+| Settings Page | ✅ Completed | Account, privacy, notification settings UI |
+| Notification Center | ✅ Completed | Dropdown and full-page notification view |
+
+#### Frontend Functionality
+| Feature | Status | Notes |
+| ------- | ------ | ----- |
+| Routing Setup | ⏳ In Progress | Basic routes established |
+| Form Validation | ⏳ In Progress | Client-side validation for inputs |
+| Dark/Light Mode | 🔄 Planned | Theme switching functionality |
+| Media Preview | ⏳ In Progress | Image/video preview in post creation |
+| State Management | 🔄 Planned | Store structure defined, implementation pending |
+
+#### Backend Integration
+| Feature | Status | Notes |
+| ------- | ------ | ----- |
+| User Authentication | 🔄 Planned | UI ready, backend integration pending |
+| Content Creation API | 🔄 Planned | Form submission to be connected |
+| Real-time Updates | 🔄 Planned | Socket integration pending |
+| Search Functionality | 🔄 Planned | API integration pending |
+| User Interactions | 🔄 Planned | Like, comment, follow actions pending |
+
+#### Legend
+- ✅ Completed: Feature is implemented and working
+- ⏳ In Progress: Currently being developed
+- 🔄 Planned: On the roadmap but development has not started
+
 
 ---
 
