@@ -48,7 +48,7 @@
   gap: 20px;
 }
 
-.recent-trending-container, .trending-now-container {
+.recent-trending-container, .trending-now-container, .history-container {
   flex: 1;
   background: white;
   border-radius: 10px;

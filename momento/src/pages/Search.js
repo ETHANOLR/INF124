@@ -161,10 +161,6 @@ const SearchPage = () => {
         <div className="search-input-container">
         </div>
         {/* Content area for search results */}
-        <div className="content-area">
-          {/* Content will appear here after search */}
-        </div>
-
         <div className="contents-containers">
           {/* Left side - Recent searches */}
           <div className="recent-trending-container">
@@ -179,6 +175,11 @@ const SearchPage = () => {
             {/* 我感觉这是个tag，可能得弄一个map？ */}
             <div className="trending-tags">
             </div>
+          </div>
+          <div className="history-container">
+          <div className="content-area">
+            {/* Content will appear here after search */}
+          </div>
           </div>
         </div>
       </div>
