@@ -84,6 +84,7 @@
     margin-left: auto;
     display: flex;
     align-items: center;
+    margin-top: 15px;
 }
 
 .follow-button {
