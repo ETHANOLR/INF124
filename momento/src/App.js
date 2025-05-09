@@ -11,6 +11,7 @@ import Example from './pages/ExamplePage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AuthProvider from './contexts/AuthContext';
+import PostCreation from './pages/PostCreation';
 
 /**
  * Main App Component
@@ -34,6 +35,7 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/search" element={<Search />} />
           <Route path="/example" element={<Example />} />
+          <Route path="/create-post" element={<PostCreation />} />
         </Routes>
       </Router>
     </AuthProvider>
