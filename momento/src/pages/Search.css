@@ -188,3 +188,15 @@ li {
   font-size: 14px;
   font-style: italic;
 }
+
+.post-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.Search-post-title {
+  margin-left: 10px;
+}

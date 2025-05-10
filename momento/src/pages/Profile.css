@@ -20,6 +20,26 @@
     padding: 30px;
     margin-bottom: 20px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative; /* For absolute positioning of settings button */
+}
+
+/* Settings Button */
+.settings-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    color: #555;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.settings-button:hover {
+    background-color: #e0e0e0;
 }
 
 .profile-avatar {
@@ -207,6 +227,7 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
+        padding-top: 60px; /* Add space for the settings button */
     }
     
     .profile-avatar {
