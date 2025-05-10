@@ -9,7 +9,7 @@ import CollectionCard from '../components/CollectionCard/CollectionCard';
  * Profile Page
  * 
  * Displays a user profile with their information, statistics, and posts.
- * Includes tabs for different types of content.
+ * Includes tabs for different types of content and a settings button.
  */
 const Profile = () => {
     const navigate = useNavigate();
@@ -89,6 +89,11 @@ const Profile = () => {
         navigate('/chat'); // Navigate to chat page
         // TODO: Maybe will open a chat with this specific user
     };
+    
+    // Navigate to settings
+    const handleSettingsClick = () => {
+        navigate('/settings');
+    };
   
     return (
         <div className="profile-container">
@@ -99,6 +104,11 @@ const Profile = () => {
             <div className="profile-content">
                 {/* User info section */}
                 <div className="profile-header">
+                    {/* Settings button */}
+                    <button className="settings-button" onClick={handleSettingsClick}>
+                        ⚙️ Settings
+                    </button>
+                    
                     <div className="profile-avatar">
                         {/* Profile image would go here */}
                     </div>
