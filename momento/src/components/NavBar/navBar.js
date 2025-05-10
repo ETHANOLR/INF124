@@ -42,7 +42,7 @@ function Navbar() {
                     <CircleButton icon="🔭" onClick={() => navigate('/explore')} />
                     {/* Search input instead of search icon */}
                     <CircleButton icon="💬" onClick={() => navigate('/chat')} />
-                    <CircleButton icon="🔔" onClick={() => navigate('/notifications')} />
+                    <CircleButton icon="🔔" onClick={() => navigate('/notification')} />
                     <CircleButton icon="👤" onClick={() => navigate('/profile')} />
                 </div>
             ) : (
