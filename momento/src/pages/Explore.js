@@ -242,13 +242,13 @@ const Explore = () => {
 
 
   return (
-    <div className = "main-container">
+    <div className = "explore-main-container">
       <Navbar />
-      <div className = "main-content">
+      <div className = "explore-main-content">
         <div className = "content-container">
           {/* Explore Section */}
-          <div className = "section">
-            <h3 className = "section-title">Explore</h3>
+          <div className = "explore-section">
+            <h3 className = "explore-section-title">Explore</h3>
             <div className = "category-bar">
               {categories.map((cat) => (
                 <div
@@ -262,33 +262,33 @@ const Explore = () => {
             </div>
           </div>
           
-          <div className = "section">
+          <div className = "explore-section">
             {/* Featured*/}
-            <h4 className = "section-title">Featured</h4>
+            <h4 className = "explore-section-title">Featured</h4>
             <div className = "featured-post">
-              <div className="post-thumbnail"></div>
-              <div className="post-content">
+              <div className="explore-post-thumbnail"></div>
+              <div className="explore-post-content">
                 <div className = "post-title-detial">
-                  <h3 className="post-title">{featured.title}</h3>
-                  <p className="post-details">{featured.details}</p>
+                  <h3 className="explore-post-title">{featured.title}</h3>
+                  <p className="explore-post-details">{featured.details}</p>
                 </div>
                 <div className="post-user">
-                  <div className="user-avatar"></div>
-                  <span className="username">{featured.username}</span>
+                  <div className="explore-user-avatar"></div>
+                  <span className="explore-username">{featured.username}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className = "section">
+          <div className = "explore-section">
             {/* Popular Today*/}
-            <h4 className = "section-title">Pupular Today</h4>
+            <h4 className = "explore-section-title">Pupular Today</h4>
             <div className = "popular-post-container">
               {posts.map((post) => (
                 <div className = "popular-post">
-                  <div className = "post-thumbnail"></div>
-                  <div className = "post-content">
-                    <h3 className="post-title">{post.title}</h3>
+                  <div className = "explore-post-thumbnail"></div>
+                  <div className = "explore-post-content">
+                    <h3 className="explore-post-title">{post.title}</h3>
                   </div>
                 </div>
               ))}
