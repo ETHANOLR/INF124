@@ -20,8 +20,9 @@ const Chat = () => {
     const [selectedChat, setSelectedChat] = useState(1);
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showMessageMenu, setShowMessageMenu] = useState(null);
     
-    // Mock conversation data with unread status
+    // Updated conversation data with online status
     const [conversations, setConversations] = useState([
         {
             id: 1,
@@ -29,7 +30,8 @@ const Chat = () => {
             lastMessage: 'You: Thanks for your...',
             timestamp: '12:45',
             unread: true,
-            avatar: null
+            avatar: null,
+            isOnline: true  // New field
         },
         {
             id: 2,
@@ -37,7 +39,8 @@ const Chat = () => {
             lastMessage: 'Great! See you tomorrow...',
             timestamp: 'Wed',
             unread: false,
-            avatar: null
+            avatar: null,
+            isOnline: false
         },
         {
             id: 3,
@@ -45,7 +48,8 @@ const Chat = () => {
             lastMessage: 'Let me check and get back...',
             timestamp: 'Tue',
             unread: false,
-            avatar: null
+            avatar: null,
+            isOnline: true
         },
         {
             id: 4,
@@ -53,26 +57,31 @@ const Chat = () => {
             lastMessage: 'That\'s amazing! Congrats...',
             timestamp: 'Mon',
             unread: false,
-            avatar: null
+            avatar: null,
+            isOnline: false
         }
     ]);
     
-    // Mock messages for different conversations
-    const allMessages = {
+    // Updated messages with read status and deletable property
+    const [allMessages, setAllMessages] = useState({
         1: [
             {
                 id: 1,
                 sender: 'Username1',
                 content: 'Hi there! How are you doing today?',
                 timestamp: '12:30 PM',
-                isCurrentUser: false
+                isCurrentUser: false,
+                isRead: true,
+                isDeleted: false
             },
             {
                 id: 2,
                 sender: 'You',
                 content: 'Hey! I\'m good, thanks for asking.',
                 timestamp: '12:35 PM',
-                isCurrentUser: true
+                isCurrentUser: true,
+                isRead: true,
+                isDeleted: false
             }
         ],
         2: [
@@ -81,21 +90,27 @@ const Chat = () => {
                 sender: 'You',
                 content: 'Are we still on for tomorrow?',
                 timestamp: '2:00 PM',
-                isCurrentUser: true
+                isCurrentUser: true,
+                isRead: true,
+                isDeleted: false
             },
             {
                 id: 2,
                 sender: 'Username2',
                 content: 'Yes, absolutely! See you at 3 PM.',
                 timestamp: '2:05 PM',
-                isCurrentUser: false
+                isCurrentUser: false,
+                isRead: true,
+                isDeleted: false
             },
             {
                 id: 3,
                 sender: 'You',
                 content: 'Great! See you tomorrow then.',
                 timestamp: '2:10 PM',
-                isCurrentUser: true
+                isCurrentUser: true,
+                isRead: false,
+                isDeleted: false
             }
         ],
         3: [
@@ -104,14 +119,18 @@ const Chat = () => {
                 sender: 'Username3',
                 content: 'Hey, did you get the documents I sent?',
                 timestamp: '11:00 AM',
-                isCurrentUser: false
+                isCurrentUser: false,
+                isRead: true,
+                isDeleted: false
             },
             {
                 id: 2,
                 sender: 'You',
                 content: 'Let me check and get back to you.',
                 timestamp: '11:15 AM',
-                isCurrentUser: true
+                isCurrentUser: true,
+                isRead: true,
+                isDeleted: false
             }
         ],
         4: [
@@ -120,17 +139,21 @@ const Chat = () => {
                 sender: 'You',
                 content: 'I just got promoted!',
                 timestamp: '4:30 PM',
-                isCurrentUser: true
+                isCurrentUser: true,
+                isRead: true,
+                isDeleted: false
             },
             {
                 id: 2,
                 sender: 'Username4',
                 content: 'That\'s amazing! Congratulations! You deserve it!',
                 timestamp: '4:35 PM',
-                isCurrentUser: false
+                isCurrentUser: false,
+                isRead: true,
+                isDeleted: false
             }
         ]
-    };
+    });
     
     // Handle tab switching
     const handleTabClick = (tab) => {
@@ -147,15 +170,75 @@ const Chat = () => {
                 conv.id === id ? { ...conv, unread: false } : conv
             )
         );
+        
+        // Mark all messages in this conversation as read
+        setAllMessages(prevMessages => ({
+            ...prevMessages,
+            [id]: prevMessages[id].map(msg => ({ ...msg, isRead: true }))
+        }));
     };
     
     // Handle message sending
     const handleSendMessage = () => {
         if (messageInput.trim()) {
-            console.log('Sending message:', messageInput);
-            // this would send the message to the backend
+            const newMessage = {
+                id: Date.now(),
+                sender: 'You',
+                content: messageInput,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isCurrentUser: true,
+                isRead: false,
+                isDeleted: false
+            };
+            
+            setAllMessages(prevMessages => ({
+                ...prevMessages,
+                [selectedChat]: [...(prevMessages[selectedChat] || []), newMessage]
+            }));
+            
+            // Update last message in conversation
+            setConversations(prevConversations =>
+                prevConversations.map(conv =>
+                    conv.id === selectedChat
+                        ? { ...conv, lastMessage: `You: ${messageInput}`, timestamp: 'Just now' }
+                        : conv
+                )
+            );
+            
             setMessageInput('');
+            
+            // Simulate message being read after 2 seconds
+            setTimeout(() => {
+                setAllMessages(prevMessages => ({
+                    ...prevMessages,
+                    [selectedChat]: prevMessages[selectedChat].map(msg =>
+                        msg.id === newMessage.id ? { ...msg, isRead: true } : msg
+                    )
+                }));
+            }, 2000);
         }
+    };
+    
+    // Handle message deletion
+    const handleDeleteMessage = (messageId) => {
+        setAllMessages(prevMessages => ({
+            ...prevMessages,
+            [selectedChat]: prevMessages[selectedChat].map(msg =>
+                msg.id === messageId ? { ...msg, isDeleted: true } : msg
+            )
+        }));
+        setShowMessageMenu(null);
+    };
+    
+    // Handle right click on message
+    const handleMessageRightClick = (e, messageId) => {
+        e.preventDefault();
+        setShowMessageMenu(messageId);
+    };
+    
+    // Handle click outside message menu
+    const handleClickOutside = () => {
+        setShowMessageMenu(null);
     };
     
     // Handle message input
@@ -187,7 +270,7 @@ const Chat = () => {
     const messages = allMessages[selectedChat] || [];
     
     return (
-        <div className="chat-container">
+        <div className="chat-container" onClick={handleClickOutside}>
             <Navbar />
             
             <div className="chat-content">
@@ -232,7 +315,9 @@ const Chat = () => {
                                 className={`conversation-item ${selectedChat === conversation.id ? 'active' : ''}`}
                                 onClick={() => handleConversationClick(conversation.id)}
                             >
-                                <div className="conversation-avatar"></div>
+                                <div className="conversation-avatar">
+                                    {conversation.isOnline && <div className="online-indicator"></div>}
+                                </div>
                                 <div className="conversation-info">
                                     <div className="conversation-header">
                                         <span className="conversation-username">{conversation.username}</span>
@@ -260,8 +345,13 @@ const Chat = () => {
                         <>
                             <div className="chat-header">
                                 <div className="chat-user-info">
-                                    <div className="chat-avatar"></div>
-                                    <span className="chat-username">{activeConversation.username}</span>
+                                    <div className="chat-avatar">
+                                        {activeConversation.isOnline && <div className="online-indicator"></div>}
+                                    </div>
+                                    <div className="chat-user-details">
+                                        <span className="chat-username">{activeConversation.username}</span>
+                                        {activeConversation.isOnline && <span className="online-status">Active now</span>}
+                                    </div>
                                 </div>
                                 <button className="menu-button">⋯</button>
                             </div>
@@ -269,13 +359,26 @@ const Chat = () => {
                             <div className="messages-container">
                                 <div className="date-divider">Today, 12:30 PM</div>
                                 
-                                {messages.map(message => (
+                                {messages.map(message => !message.isDeleted && (
                                     <div
                                         key={message.id}
                                         className={`message ${message.isCurrentUser ? 'sent' : 'received'}`}
+                                        onContextMenu={(e) => message.isCurrentUser && handleMessageRightClick(e, message.id)}
                                     >
                                         <div className="message-content">{message.content}</div>
-                                        <div className="message-timestamp">{message.timestamp}</div>
+                                        <div className="message-timestamp">
+                                            {message.timestamp}
+                                            {message.isCurrentUser && (
+                                                <span className="read-status">
+                                                    {message.isRead ? ' ✓✓' : ' ✓'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {showMessageMenu === message.id && (
+                                            <div className="message-menu">
+                                                <button onClick={() => handleDeleteMessage(message.id)}>Delete</button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
