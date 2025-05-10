@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AuthProvider from './contexts/AuthContext';
 import PostCreation from './pages/PostCreation';
+import Settings from './pages/Settings';
 
 /**
  * Main App Component
@@ -36,6 +37,7 @@ function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/example" element={<Example />} />
           <Route path="/create-post" element={<PostCreation />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Router>
     </AuthProvider>
