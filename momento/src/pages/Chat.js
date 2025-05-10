@@ -4,7 +4,7 @@ import './Chat.css';
 import Navbar from '../components/NavBar/navBar';
 
 /**
- * Chat Component
+ * Chat Page
  * 
  * Real-time messaging interface with conversation list and active chat display.
  * Features:
