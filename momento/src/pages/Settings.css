@@ -1,0 +1,316 @@
+/* Settings.css */
+.settings-page {
+    background-color: #f5f5f5;
+    min-height: 100vh;
+}
+
+/* Settings Header */
+.settings-header {
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Settings Container */
+.settings-container {
+    padding: 40px;
+}
+
+/* Settings Content Wrapper */
+.settings-wrapper {
+    background: white;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.settings-logo {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 20px;
+    color: #ff6f61;
+}
+
+.settings-logo-image {
+    height: 30px;
+    margin-right: 8px;
+}
+
+.settings-logo-text {
+    display: inline-block;
+}
+
+.settings-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+    flex: 1;
+    text-align: center;
+}
+
+.save-button {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 35px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.save-button:hover {
+    background-color: #e05a4d;
+}
+
+/* Settings Content */
+.settings-content {
+    display: flex;
+    min-height: 600px;
+    border-top: none;
+}
+
+/* Settings Navigation */
+.settings-nav {
+    width: 250px;
+    border-right: 1px solid #f0f0f0;
+    padding: 30px 0;
+}
+
+.nav-item {
+    display: block;
+    width: 100%;
+    padding: 12px 40px;
+    text-align: left;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 8px;
+}
+
+.nav-item:hover {
+    background-color: #f8f8f8;
+}
+
+.nav-item.active {
+    background-color: #ff6f61;
+    color: white;
+    font-weight: 500;
+}
+
+.nav-item.logout {
+    color: #ff6f61;
+    margin-top: 40px;
+    font-weight: 500;
+}
+
+.nav-item.logout:hover {
+    background-color: #ffefef;
+}
+
+/* Settings Main Content */
+.settings-main {
+    flex: 1;
+    padding: 40px 60px;
+}
+
+.account-settings h3 {
+    font-size: 22px;
+    margin-bottom: 35px;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Profile Settings Layout */
+.profile-settings-container {
+    display: flex;
+    gap: 60px;
+    margin-bottom: 50px;
+}
+
+.profile-info-section {
+    flex: 1;
+}
+
+.profile-avatar-section {
+    width: 280px;
+    text-align: center;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: #333;
+}
+
+/* Input Groups */
+.input-group {
+    margin-bottom: 25px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+}
+
+.input-group input,
+.input-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+    background-color: #fff;
+}
+
+.input-group input:focus,
+.input-group textarea:focus {
+    border-color: #ff6f61;
+    outline: none;
+}
+
+.input-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+}
+
+/* Avatar Section */
+.avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.avatar-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+}
+
+.change-avatar-button {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 30px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.change-avatar-button:hover {
+    background-color: #e05a4d;
+}
+
+/* Password Section */
+.password-section {
+    margin-top: 50px;
+}
+
+.password-section .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.save-change-button {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 30px;
+    font-size: 15px;
+    margin-top: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.save-change-button:hover {
+    background-color: #e05a4d;
+}
+
+/* Other Settings Sections */
+.privacy-settings,
+.notifications-settings {
+    padding: 20px 0;
+}
+
+.privacy-settings h3,
+.notifications-settings h3 {
+    font-size: 22px;
+    margin-bottom: 30px;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .profile-settings-container {
+        flex-direction: column;
+        gap: 40px;
+    }
+    
+    .profile-avatar-section {
+        width: 100%;
+    }
+    
+    .avatar-preview {
+        width: 150px;
+        height: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .settings-wrapper {
+        border-radius: 0;
+    }
+    
+    .settings-content {
+        flex-direction: column;
+    }
+    
+    .settings-nav {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+        padding: 20px 0;
+    }
+    
+    .settings-main {
+        padding: 40px 20px;
+    }
+    
+    .settings-header {
+        padding: 20px;
+    }
+    
+    .settings-title {
+        font-size: 18px;
+    }
+    
+    .save-button {
+        padding: 8px 25px;
+        font-size: 14px;
+    }
+}
