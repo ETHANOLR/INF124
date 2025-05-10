@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import Navbar from '../components/NavBar/navBar';
 import './Explore.css';
+import PostModal from '../components/PostModel/PostModel';
 
 const Explore = () => {
   const [exploreCategory, setCategory] = useState('For you');
+  const [selectedPost, setSelectedPost] = useState(null);
 
   const categories = ['For you', 'Trending', 'Fashion', 'Travel', 'Food', 'Beauty', 'Lifestyle', 'Technology'];
 
