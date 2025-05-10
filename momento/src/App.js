@@ -10,9 +10,11 @@ import Search from './pages/Search';
 import Example from './pages/ExamplePage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   return (
+      <AuthProvider>
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/home" />} />
@@ -21,12 +23,13 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/explore" element={<Explore />} />
-        <Route path="/notifications" element={<Notification />} />
+        <Route path="/notification" element={<Notification />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/search" element={<Search />} />
         <Route path="/example" element={<Example />} />
       </Routes>
     </Router>
+      </AuthProvider>
   );
 }
 
