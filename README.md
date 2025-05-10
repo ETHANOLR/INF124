@@ -123,12 +123,13 @@ Momento is currently in the development stage. The frontend interface design has
 | Search Interface | ✅ Completed | Search bar and filters UI |
 | Settings Page | ✅ Completed | Account, privacy, notification settings UI |
 | Notification Center | ✅ Completed | Dropdown and full-page notification view |
+| Message Page | ✅ Completed | Finished the Message page UI |
 
 #### Frontend Functionality
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
 | Routing Setup | ⏳ In Progress | Basic routes established |
-| Form Validation | ⏳ In Progress | Client-side validation for inputs |
+| Form Validation | 🔄 Planned | Client-side validation for inputs |
 | Dark/Light Mode | 🔄 Planned | Theme switching functionality |
 | Media Preview | ⏳ In Progress | Image/video preview in post creation |
 | State Management | 🔄 Planned | Store structure defined, implementation pending |
