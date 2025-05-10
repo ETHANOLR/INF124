@@ -137,17 +137,16 @@ const Home = () => {
     };
     
     return (
-        <div className="main-container">
+        <div className="home-main-container">
             {/* Navigation bar at the top */}
             <Navbar />
-            
+
             {/* Main content area */}
-            <div className="main-content">
+            <div className="home-main-content">
                 {/* Sidebar with discovery options and categories */}
                 <div className="sidebar">
-                    {/* Discovery section */}
-                    <div className="section">
-                        <h3 className="section-title">Discover</h3>
+                    <div className="home-section">
+                        <h3 className="home-section-title">Discover</h3>
                         <div 
                             className={`tab ${activeTab === 'For You' ? 'active' : ''}`}
                             onClick={() => handleTabClick('For You')}
@@ -167,10 +166,10 @@ const Home = () => {
                             Trending
                         </div>
                     </div>
-                    
+
                     {/* Categories section */}
-                    <div className="section">
-                        <h3 className="section-title">Categories</h3>
+                    <div className="home-section">
+                        <h3 className="home-section-title">Categories</h3>
                         <div 
                             className={`category ${activeCategory === 'Fashion' ? 'active' : ''}`}
                             onClick={() => handleCategoryClick('Fashion')}
@@ -219,13 +218,13 @@ const Home = () => {
                         <div className="post-grid">
                             {posts.map((post) => (
                                 <div key={post.id} className="post-item">
-                                    <div className="post-thumbnail"></div>
-                                    <div className="post-content">
-                                        <h3 className="post-title">{post.title}</h3>
-                                        <p className="post-details">{post.details}</p>
+                                    <div className="home-post-thumbnail"></div>
+                                    <div className="home-post-content">
+                                        <h3 className="home-post-title">{post.title}</h3>
+                                        <p className="home-post-details">{post.details}</p>
                                         <div className="post-user">
-                                            <div className="user-avatar"></div>
-                                            <span className="username">{post.username}</span>
+                                            <div className="home-user-avatar"></div>
+                                            <span className="home-username">{post.username}</span>
                                         </div>
                                         <div className="post-actions">
                                             <button className="action-button" onClick={() => handleLike(post.id)}>Like</button>

@@ -1,5 +1,5 @@
 /* Home.css */
-.main-container {
+.home-main-container {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -7,7 +7,7 @@
 }
 
 /* Main Content Styles */
-.main-content {
+.home-main-content {
     display: flex;
     flex: 1;
     padding: 20px;
@@ -21,14 +21,14 @@
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    height: fit-content; /* Prevents sidebar from stretching */
+    height: fit-content;
 }
 
-.section {
+.home-section {
     margin-bottom: 30px;
 }
 
-.section-title {
+.home-section-title {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 15px;
@@ -68,9 +68,9 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 100px); /* Fixed height for scroll container */
-    overflow: hidden; /* Prevent feed from growing beyond its container */
-  }
+    height: calc(100vh - 100px);
+    overflow: hidden;
+}
 
 .feed-title {
     font-size: 24px;
@@ -100,23 +100,23 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.post-thumbnail {
+.home-post-thumbnail {
     height: 150px;
     background-color: #f0f0f0;
 }
 
-.post-content {
+.home-post-content {
     padding: 15px;
 }
 
-.post-title {
+.home-post-title {
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 5px;
     color: #333;
 }
 
-.post-details {
+.home-post-details {
     font-size: 14px;
     color: #666;
     margin-bottom: 10px;
@@ -128,7 +128,7 @@
     margin-bottom: 10px;
 }
 
-.user-avatar {
+.home-user-avatar {
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -136,7 +136,7 @@
     margin-right: 8px;
 }
 
-.username {
+.home-username {
     font-size: 14px;
     color: #555;
 }
@@ -195,7 +195,7 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     cursor: pointer;
     transition: background-color 0.2s, transform 0.2s;
-    z-index: 100; /* Ensure button stays above content */
+    z-index: 100;
 }
 
 .fab:hover {
@@ -205,7 +205,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .main-content {
+    .home-main-content {
         flex-direction: column;
     }
 
@@ -215,7 +215,7 @@
     }
 
     .feed {
-        height: calc(100vh - 250px); /* Adjust height for mobile */
+        height: calc(100vh - 250px);
     }
 
     .post-grid {
