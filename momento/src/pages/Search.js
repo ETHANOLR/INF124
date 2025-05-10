@@ -3,8 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { Button } from '../components/buttons/buttons';
 import Navbar from '../components/NavBar/navBar';
 import '../pages/Search.css';
-import PostCard from '../components/PostCard/PostCard';
 import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
+import PostModal from '../components/PostModel/PostModel';
+
 
 
 const user1 = {
@@ -30,6 +31,9 @@ const SearchPage = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
+  //Adding new Component for displaying post
+  const [selectedPost, setSelectedPost] = useState(null);
 
 
   const query = useQuery();
@@ -233,10 +237,10 @@ const SearchPage = () => {
                 >
                   <div className = "post-grid">
                     {posts.map((post) => (
-                      <div key={post.id} className="post-item">
+                      <div key={post.id} className="post-item" onClick={() => setSelectedPost(post)}>
                         <div className="post-thumbnail"></div>
                         <div className="post-content">
-                          <h3 className="post-title">{post.title}</h3>
+                          <h3 className="Search-post-title">{post.title}</h3>
                           <p className="post-details">{post.details}</p>
                           <div className="post-user">
                               <div className="user-avatar"></div>
@@ -250,6 +254,7 @@ const SearchPage = () => {
                         </div>
                       </div>
                     ))}
+                    <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
                   </div>
                 </InfiniteScroll>
               </div>
