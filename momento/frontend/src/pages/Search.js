@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '../components/buttons/buttons';
 import Navbar from '../components/NavBar/navBar';
-import '../pages/Search.css';
+import './Search.css';
 import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
 import PostModal from '../components/PostModel/PostModel';
 
