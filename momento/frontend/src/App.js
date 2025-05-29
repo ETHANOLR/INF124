@@ -13,6 +13,7 @@ import Register from './pages/Register';
 import AuthProvider from './contexts/AuthContext';
 import PostCreation from './pages/PostCreation';
 import Settings from './pages/Settings';
+import TestPage from './pages/Test';
 
 /**
  * Main App Component
@@ -32,12 +33,13 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/explore" element={<Explore />} />
-          <Route path="/notifications" element={<Notification />} />
+          <Route path="/notification" element={<Notification />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/search" element={<Search />} />
           <Route path="/example" element={<Example />} />
           <Route path="/create-post" element={<PostCreation />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/test" element={<TestPage />} />
         </Routes>
       </Router>
     </AuthProvider>
