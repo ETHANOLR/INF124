@@ -113,10 +113,13 @@ const Login = () => {
         
         try {
             // Send login request to backend API
-            const response = await axios.post('http://localhost:4000/api/auth/login', {
+            const response = await axios.post(
+            `${process.env.REACT_APP_API_BASE_URL}/api/auth/login`,
+            {
                 email: formData.email,
                 password: formData.password
-            });
+            }
+            );
             
             console.log('Login successful:', response.data);
             

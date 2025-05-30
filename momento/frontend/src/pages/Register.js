@@ -115,7 +115,7 @@ const Register = () => {
         
         try {
             // Send registration data to backend API
-            const response = await axios.post('http://localhost:4000/api/users', formData);
+            const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/users`, formData);
             
             console.log('Registration successful:', response.data);
             
