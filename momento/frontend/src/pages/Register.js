@@ -40,6 +40,35 @@ const Register = () => {
         }
     };
 
+    // 允许的邮箱域名列表
+    const allowedEmailDomains = [
+        // 美国
+        'gmail.com',
+        'yahoo.com',
+        'hotmail.com',
+        'outlook.com',
+        'icloud.com',
+        'protonmail.com',
+        'live.com',
+        
+        // 中国
+        'qq.com',
+        '163.com',
+        '126.com',
+        'sina.com',
+        '139.com',        // 中国移动
+        'yeah.net',       // 网易邮箱
+        'foxmail.com',    // 腾讯企业邮箱
+        'vip.163.com',    // 网易VIP邮箱
+        'vip.126.com',    // 网易VIP邮箱
+        'vip.sina.com',   // 新浪VIP邮箱
+    ];
+
+    const validateEmailDomain = (email) => {
+        const domain = email.toLowerCase().split('@')[1];
+        return allowedEmailDomains.includes(domain);
+    };
+
     const validateForm = () => {
         let tempErrors = {};
         let isValid = true;
@@ -56,7 +85,10 @@ const Register = () => {
             tempErrors.email = 'Email is required';
             isValid = false;
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            tempErrors.email = 'Email is invalid';
+            tempErrors.email = 'Email format is invalid';
+            isValid = false;
+        } else if (!validateEmailDomain(formData.email)) {
+            tempErrors.email = 'Please use a mainstream email provider (Gmail, QQ, 163, Yahoo, Outlook, etc.)';
             isValid = false;
         }
 
@@ -161,10 +193,15 @@ const Register = () => {
                                 value={formData.email}
                                 onChange={handleChange}
                                 className={`register-input ${errors.email ? 'input-error' : ''}`}
-                                placeholder="Enter your email"
+                                placeholder="Enter your email (Gmail, QQ, 163, Yahoo, etc.)"
                                 disabled={isLoading}
                             />
                             {errors.email && <div className="error-message">{errors.email}</div>}
+                            {!errors.email && (
+                                <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                                    Supported: Gmail, QQ, 163, 126, Yahoo, Outlook, Hotmail, and other mainstream providers
+                                </div>
+                            )}
                         </div>
                     
                         <div className="form-group">
