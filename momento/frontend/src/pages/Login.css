@@ -64,7 +64,7 @@
     text-align: center;
     margin-bottom: 8px;
     cursor: pointer;
-  }
+}
 
 .login-logo:hover {
     color: #e05a4d;
@@ -85,6 +85,7 @@
     border-radius: 4px;
     margin-bottom: 16px;
     font-size: 14px;
+    text-align: center;
 }
 
 .form-group {
@@ -105,11 +106,22 @@
     border-radius: 8px;
     font-size: 14px;
     transition: border-color 0.3s;
+    box-sizing: border-box;
 }
 
 .login-input:focus {
     border-color: #ff6f61;
     outline: none;
+}
+
+.input-error {
+    border-color: #d32f2f !important;
+}
+
+.error-message {
+    color: #d32f2f;
+    font-size: 12px;
+    margin-top: 4px;
 }
 
 .login-button {
@@ -126,8 +138,13 @@
     margin-top: 10px;
 }
 
-.login-button:hover {
+.login-button:hover:not(:disabled) {
     background-color: #e05a4d;
+}
+
+.login-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .login-options {
@@ -195,8 +212,13 @@
     transition: background-color 0.3s;
 }
 
-.social-button:hover {
+.social-button:hover:not(:disabled) {
     background-color: #f8f8f8;
+}
+
+.social-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 .social-icon {
@@ -217,7 +239,7 @@
     }
 
     .login-form-panel {
-      width: 100%;
+        width: 100%;
         padding: 20px 10px;
     }
 
