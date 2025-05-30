@@ -1,7 +1,7 @@
 # Momento
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/ETHANOLR/INF124/main/momento/src/Momento_with_name.png" alt="Momento Logo" width="200"/>
+<img src="https://raw.githubusercontent.com/ETHANOLR/INF124/main/momento/frontend/src/Momento_with_name.png" alt="Momento Logo" width="200"/>
 </div>
 
 ## Introduction
