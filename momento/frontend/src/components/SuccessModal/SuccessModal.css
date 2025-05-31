@@ -1,0 +1,210 @@
+/* SuccessModal.css */
+
+/* Modal overlay that covers the entire screen */
+.success-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Main modal container */
+.success-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.3s ease-out;
+    position: relative;
+}
+
+/* Success icon container */
+.success-icon-container {
+    width: 80px;
+    height: 80px;
+    background-color: #ff6f61;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px auto;
+    animation: scaleIn 0.5s ease-out 0.2s both;
+}
+
+/* Checkmark icon */
+.success-checkmark {
+    width: 40px;
+    height: 40px;
+    position: relative;
+}
+
+.success-checkmark::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 8px;
+    border: 3px solid white;
+    border-top: none;
+    border-right: none;
+    transform: translate(-50%, -60%) rotate(-45deg);
+    animation: checkmarkDraw 0.3s ease-out 0.5s both;
+}
+
+/* Modal title */
+.success-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    animation: fadeInUp 0.4s ease-out 0.3s both;
+}
+
+/* Modal message */
+.success-message {
+    font-size: 16px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 32px;
+    animation: fadeInUp 0.4s ease-out 0.4s both;
+}
+
+/* Action button */
+.success-button {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    animation: fadeInUp 0.4s ease-out 0.5s both;
+}
+
+.success-button:hover {
+    background-color: #e05a4d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 111, 97, 0.3);
+}
+
+.success-button:active {
+    transform: translateY(0);
+}
+
+/* Close button (X) in top-right corner */
+.success-close-button {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.success-close-button:hover {
+    background-color: #f5f5f5;
+    color: #666;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes checkmarkDraw {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%) rotate(-45deg) scale(0);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -60%) rotate(-45deg) scale(1);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+    .success-modal {
+        margin: 20px;
+        padding: 32px 24px;
+    }
+    
+    .success-title {
+        font-size: 20px;
+    }
+    
+    .success-message {
+        font-size: 14px;
+    }
+    
+    .success-icon-container {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .success-checkmark {
+        width: 35px;
+        height: 35px;
+    }
+}
