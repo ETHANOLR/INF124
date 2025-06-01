@@ -12,6 +12,7 @@ momento/node_modules/
 # production
 /build
 .idea/
+/momento/frontend/build/
 
 # misc
 .DS_Store
