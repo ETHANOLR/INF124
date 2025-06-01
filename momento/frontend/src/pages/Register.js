@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Register.css';
+import SuccessModal from '../components/SuccessModal/SuccessModal';
 
 /**
  * Register Page
@@ -10,20 +11,24 @@ import './Register.css';
  * Features a split-screen design with a welcome message and registration form.
  * Collects email, username, and password with appropriate validation.
  * Sends registration data to backend API and handles success/error responses.
+ * Shows a  success modal after successful registration.
  * Includes social media registration options and links to terms/privacy policies.
- * Redirects to home page after successful registration.
  */
 const Register = () => {
+    // Form data state
     const [formData, setFormData] = useState({
         email: '',
         username: '',
         password: ''
     });
 
+    // Form validation and UI state
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const navigate = useNavigate();
 
+    // Handle input changes and clear errors
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
@@ -40,7 +45,7 @@ const Register = () => {
         }
     };
 
-    // 允许的邮箱域名列表
+    // List of allowed email domains for validation
     const allowedEmailDomains = [
         // 美国
         'gmail.com',
@@ -64,15 +69,18 @@ const Register = () => {
         'vip.sina.com',   // 新浪VIP邮箱
     ];
 
+    // Validate if email domain is in allowed list
     const validateEmailDomain = (email) => {
         const domain = email.toLowerCase().split('@')[1];
         return allowedEmailDomains.includes(domain);
     };
 
+    // Form validation function
     const validateForm = () => {
         let tempErrors = {};
         let isValid = true;
 
+        // Username validation
         if (!formData.username.trim()) {
             tempErrors.username = 'Username is required';
             isValid = false;
@@ -81,6 +89,7 @@ const Register = () => {
             isValid = false;
         }
 
+        // Email validation
         if (!formData.email.trim()) {
             tempErrors.email = 'Email is required';
             isValid = false;
@@ -92,6 +101,7 @@ const Register = () => {
             isValid = false;
         }
 
+        // Password validation
         if (!formData.password) {
             tempErrors.password = 'Password is required';
             isValid = false;
@@ -104,9 +114,11 @@ const Register = () => {
         return isValid;
     };
 
+    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
     
+        // Validate form before submission
         if (!validateForm()) {
             return;
         }
@@ -123,16 +135,13 @@ const Register = () => {
             setFormData({ email: '', username: '', password: '' });
             setErrors({});
             
-            // Show success message
-            alert('Account created successfully! Welcome to Momento!');
-            
-            // Redirect to login page or home page
-            navigate('/login');
+            // Show success modal instead of alert
+            setShowSuccessModal(true);
             
         } catch (error) {
             console.error('Registration error:', error);
             
-            // Handle different types of errors
+            // Handle different types of errors from backend
             if (error.response) {
                 // Server responded with error status
                 const { data, status } = error.response;
@@ -153,7 +162,7 @@ const Register = () => {
                 // Network error
                 setErrors({ general: 'Network error. Please check your connection and try again.' });
             } else {
-                // Other error
+                // Other unexpected error
                 setErrors({ general: 'An unexpected error occurred. Please try again.' });
             }
         } finally {
@@ -161,8 +170,15 @@ const Register = () => {
         }
     };
 
+    // Handle success modal close - redirect to login page
+    const handleSuccessModalClose = () => {
+        setShowSuccessModal(false);
+        navigate('/login');
+    };
+
     return (
         <div className="register-container">
+            {/* Left panel with welcome message */}
             <div className="register-left-panel">
                 <div className="circle-container">
                     <div className="register-welcome">
@@ -172,18 +188,22 @@ const Register = () => {
                 </div>
             </div>
             
+            {/* Right panel with registration form */}
             <div className="register-form-panel">
                 <div className="register-form-container">
                     <h2 className="register-logo" onClick={() => navigate('/home')}>Momento</h2>
                     <p className="register-subtitle">Create your account</p>
 
+                    {/* Display general errors */}
                     {errors.general && (
                         <div className="error-message" style={{ textAlign: 'center', marginBottom: '16px', color: '#d32f2f' }}>
                             {errors.general}
                         </div>
                     )}
 
+                    {/* Registration form */}
                     <form onSubmit={handleSubmit}>
+                        {/* Email input field */}
                         <div className="form-group">
                             <label htmlFor="email">Email</label>
                             <input
@@ -204,6 +224,7 @@ const Register = () => {
                             )}
                         </div>
                     
+                        {/* Username input field */}
                         <div className="form-group">
                             <label htmlFor="username">Username</label>
                             <input
@@ -219,6 +240,7 @@ const Register = () => {
                             {errors.username && <div className="error-message">{errors.username}</div>}
                         </div>
                     
+                        {/* Password input field */}
                         <div className="form-group">
                             <label htmlFor="password">Password</label>
                             <input
@@ -234,6 +256,7 @@ const Register = () => {
                             {errors.password && <div className="error-message">{errors.password}</div>}
                         </div>
                     
+                        {/* Submit button */}
                         <button 
                             type="submit" 
                             className="register-button"
@@ -247,6 +270,7 @@ const Register = () => {
                         </button>
                     </form>
               
+                    {/* Additional options and links */}
                     <div className="register-options">
                         <p className="login-link">
                             Already have an account? <Link to="/login" className="link-text">Login</Link>
@@ -258,6 +282,7 @@ const Register = () => {
                     
                         <p className="register-with-text">Or sign up with</p>
 
+                        {/* Social media registration buttons */}
                         <div className="social-buttons">
                             <button className="social-button" disabled={isLoading}>
                                 <div className="social-icon google-icon"></div>
@@ -272,6 +297,16 @@ const Register = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Success modal - shown after successful registration */}
+            <SuccessModal
+                isOpen={showSuccessModal}
+                onClose={handleSuccessModalClose}
+                title="Welcome to Momento!"
+                message="Your account has been created successfully. You can now start sharing your amazing moments with the world!"
+                buttonText="Go to Login"
+                onButtonClick={handleSuccessModalClose}
+            />
         </div>
     );
 };
