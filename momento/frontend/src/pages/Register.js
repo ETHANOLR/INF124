@@ -43,6 +43,14 @@ const Register = () => {
                 [name]: ''
             });
         }
+        
+        // Clear general error when user starts typing
+        if (errors.general) {
+            setErrors({
+                ...errors,
+                general: ''
+            });
+        }
     };
 
     // List of allowed email domains for validation
@@ -147,11 +155,11 @@ const Register = () => {
                 const { data, status } = error.response;
                 
                 if (status === 400 && data.message) {
-                    // Handle validation errors from backend
-                    if (data.message.includes('email')) {
-                        setErrors({ email: 'Email already exists' });
-                    } else if (data.message.includes('username')) {
-                        setErrors({ username: 'Username already taken' });
+                    // Handle validation errors from backend - use general error for consistency
+                    if (data.message.includes('email') || data.message.includes('Email')) {
+                        setErrors({ general: 'Email already exists' });
+                    } else if (data.message.includes('username') || data.message.includes('Username')) {
+                        setErrors({ general: 'Username already taken' });
                     } else {
                         setErrors({ general: data.message });
                     }
@@ -194,11 +202,9 @@ const Register = () => {
                     <h2 className="register-logo" onClick={() => navigate('/home')}>Momento</h2>
                     <p className="register-subtitle">Create your account</p>
 
-                    {/* Display general errors */}
+                    {/* Display general errors in the same style as login page */}
                     {errors.general && (
-                        <div className="error-message" style={{ textAlign: 'center', marginBottom: '16px', color: '#d32f2f' }}>
-                            {errors.general}
-                        </div>
+                        <div className="register-error">{errors.general}</div>
                     )}
 
                     {/* Registration form */}

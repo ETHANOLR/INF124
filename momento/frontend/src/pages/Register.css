@@ -78,6 +78,17 @@
     font-weight: normal;
 }
 
+/* Error box styling*/
+.register-error {
+    background-color: #ffebee;
+    color: #d32f2f;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    text-align: center;
+}
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -96,6 +107,7 @@
     border-radius: 8px;
     font-size: 14px;
     transition: border-color 0.3s;
+    box-sizing: border-box;
 }
 
 .register-input:focus {
@@ -104,7 +116,7 @@
 }
 
 .input-error {
-    border-color: #d32f2f;
+    border-color: #d32f2f !important;
 }
 
 .error-message {
@@ -127,8 +139,13 @@
     margin-top: 10px;
 }
 
-.register-button:hover {
+.register-button:hover:not(:disabled) {
     background-color: #e05a4d;
+}
+
+.register-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .register-options {
@@ -203,8 +220,13 @@
     transition: background-color 0.3s;
 }
 
-.social-button:hover {
+.social-button:hover:not(:disabled) {
     background-color: #f8f8f8;
+}
+
+.social-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 .social-icon {
