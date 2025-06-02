@@ -180,7 +180,7 @@ app.post('/api/auth/login', async (req, res) => {
                 { email: email.toLowerCase() },
                 { username: email }
             ]
-        });
+        }).select('+password');
 
         if (!user) {
             return res.status(404).json({ 
