@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters long']
+        minlength: [6, 'Password must be at least 6 characters long'],
+        select: false // This hides password in queries by default, but we can override with +password
     },
 
     // PROFILE INFORMATION
@@ -36,17 +37,20 @@ const userSchema = new mongoose.Schema({
         firstName: {
             type: String,
             trim: true,
-            maxlength: [50, 'First name cannot exceed 50 characters']
+            maxlength: [50, 'First name cannot exceed 50 characters'],
+            default: ''
         },
         lastName: {
             type: String,
             trim: true,
-            maxlength: [50, 'Last name cannot exceed 50 characters']
+            maxlength: [50, 'Last name cannot exceed 50 characters'],
+            default: ''
         },
         displayName: {
             type: String,
             trim: true,
-            maxlength: [100, 'Display name cannot exceed 100 characters']
+            maxlength: [100, 'Display name cannot exceed 100 characters'],
+            default: ''
         },
         bio: {
             type: String,
@@ -71,17 +75,20 @@ const userSchema = new mongoose.Schema({
         location: {
             type: String,
             trim: true,
-            maxlength: [100, 'Location cannot exceed 100 characters']
+            maxlength: [100, 'Location cannot exceed 100 characters'],
+            default: ''
         },
         website: {
             type: String,
             trim: true,
-            maxlength: [200, 'Website URL cannot exceed 200 characters']
+            maxlength: [200, 'Website URL cannot exceed 200 characters'],
+            default: ''
         },
         phoneNumber: {
             type: String,
             trim: true,
-            maxlength: [20, 'Phone number cannot exceed 20 characters']
+            maxlength: [20, 'Phone number cannot exceed 20 characters'],
+            default: ''
         },
         
         // Birth date and age
