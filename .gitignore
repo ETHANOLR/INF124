@@ -13,6 +13,7 @@ momento/node_modules/
 /build
 .idea/
 /momento/frontend/build/
+/momento/backend/uploads/avatars
 
 # misc
 .DS_Store
