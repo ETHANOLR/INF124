@@ -517,7 +517,159 @@ app.put('/api/users/password', authenticateToken, async (req, res) => {
     }
 });
 
-// Error handling middleware for multer
+// Get user profile by username
+app.get('/api/users/profile/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        
+        const user = await User.findOne({ username })
+            .select('-password')
+            .populate('relationships.followers.user', 'username profile.profilePicture')
+            .populate('relationships.following.user', 'username profile.profilePicture');
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Return public profile data
+        const profileData = {
+            id: user._id,
+            username: user.username,
+            email: user.email, // You might want to hide this for non-own profiles
+            profile: user.profile,
+            stats: user.stats,
+            account: {
+                isVerified: user.account.isVerified,
+                accountType: user.account.accountType
+            },
+            createdAt: user.createdAt
+        };
+
+        res.json(profileData);
+
+    } catch (err) {
+        console.error('Get user profile error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Follow a user
+app.post('/api/users/:userId/follow', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentUserId = req.user.userId;
+
+        if (userId === currentUserId) {
+            return res.status(400).json({ message: 'Cannot follow yourself' });
+        }
+
+        const [currentUser, targetUser] = await Promise.all([
+            User.findById(currentUserId),
+            User.findById(userId)
+        ]);
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Check if already following
+        const isAlreadyFollowing = currentUser.relationships.following.some(
+            f => f.user.toString() === userId
+        );
+
+        if (isAlreadyFollowing) {
+            return res.status(400).json({ message: 'Already following this user' });
+        }
+
+        // Add to following list
+        currentUser.relationships.following.push({ user: userId });
+        currentUser.stats.followingCount += 1;
+
+        // Add to followers list
+        targetUser.relationships.followers.push({ user: currentUserId });
+        targetUser.stats.followersCount += 1;
+
+        await Promise.all([currentUser.save(), targetUser.save()]);
+
+        res.json({
+            message: 'Successfully followed user',
+            isFollowing: true,
+            followersCount: targetUser.stats.followersCount
+        });
+
+    } catch (err) {
+        console.error('Follow user error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Unfollow a user
+app.post('/api/users/:userId/unfollow', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentUserId = req.user.userId;
+
+        const [currentUser, targetUser] = await Promise.all([
+            User.findById(currentUserId),
+            User.findById(userId)
+        ]);
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Remove from following list
+        currentUser.relationships.following = currentUser.relationships.following.filter(
+            f => f.user.toString() !== userId
+        );
+        currentUser.stats.followingCount = Math.max(0, currentUser.stats.followingCount - 1);
+
+        // Remove from followers list
+        targetUser.relationships.followers = targetUser.relationships.followers.filter(
+            f => f.user.toString() !== currentUserId
+        );
+        targetUser.stats.followersCount = Math.max(0, targetUser.stats.followersCount - 1);
+
+        await Promise.all([currentUser.save(), targetUser.save()]);
+
+        res.json({
+            message: 'Successfully unfollowed user',
+            isFollowing: false,
+            followersCount: targetUser.stats.followersCount
+        });
+
+    } catch (err) {
+        console.error('Unfollow user error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Check follow status
+app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentUserId = req.user.userId;
+
+        if (userId === currentUserId) {
+            return res.json({ isFollowing: false }); // Can't follow yourself
+        }
+
+        const currentUser = await User.findById(currentUserId);
+        if (!currentUser) {
+            return res.status(404).json({ message: 'Current user not found' });
+        }
+
+        const isFollowing = currentUser.relationships.following.some(
+            f => f.user.toString() === userId
+        );
+
+        res.json({ isFollowing });
+
+    } catch (err) {
+        console.error('Check follow status error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 app.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
