@@ -14,46 +14,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve static files for uploaded avatars
-app.use('/uploads', express.static('uploads'));
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = 'uploads/avatars';
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Multer configuration for avatar uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        // Generate unique filename: userId-timestamp.extension
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const extension = path.extname(file.originalname);
-        cb(null, req.user.userId + '-' + uniqueSuffix + extension);
-    }
-});
-
-// File filter for avatar uploads
-const fileFilter = (req, file, cb) => {
-    // Check if file is an image
-    if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only image files are allowed'), false);
-    }
-};
-
-const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    }
-});
-
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'momento-default-secret-change-in-production';
 
@@ -64,6 +24,46 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(() => console.log('Connected to MongoDB Atlas'))
 .catch(err => console.error('MongoDB connection error:', err));
+
+// Ensure upload directory exists
+const uploadDir = './uploads/avatars';
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure multer for avatar uploads
+const avatarStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        // Generate unique filename: userID + timestamp + original extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(file.originalname);
+        cb(null, `avatar-${req.user.userId}-${uniqueSuffix}${fileExtension}`);
+    }
+});
+
+// File filter for avatar uploads
+const avatarFileFilter = (req, file, cb) => {
+    // Only allow image files
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image files are allowed!'), false);
+    }
+};
+
+const avatarUpload = multer({
+    storage: avatarStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: avatarFileFilter
+});
+
+// Static file serving for uploaded avatars
+app.use('/uploads', express.static('uploads'));
 
 // Test API endpoint
 app.get('/api/TestDB', (req, res) => {
@@ -78,14 +78,14 @@ app.post('/api/users', async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
-        // Required server-side validation
+        // Required server-side authentication
         if (!username || !email || !password) {
             return res.status(400).json({ 
                 message: 'Username, email, and password are required' 
             });
         }
 
-        // Check if the user already exists
+        // Check if the user already exists (cannot be fully verified on the front end)
         const existingUser = await User.findOne({ 
             $or: [{ email: email.toLowerCase() }, { username }] 
         });
@@ -103,7 +103,7 @@ app.post('/api/users', async (req, res) => {
             }
         }
 
-        // Hash password
+        // Encrypt password
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
@@ -127,12 +127,14 @@ app.post('/api/users', async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        // Return user data without password
+        // Return user data
         const userResponse = {
             id: savedUser._id,
             username: savedUser.username,
             email: savedUser.email,
             profile: savedUser.profile,
+            stats: savedUser.stats,
+            account: savedUser.account,
             createdAt: savedUser.createdAt
         };
 
@@ -145,7 +147,7 @@ app.post('/api/users', async (req, res) => {
     } catch (err) {
         console.error('Registration error:', err);
         
-        // Handle duplicate key errors
+        // Handle duplicate errors at the database level
         if (err.code === 11000) {
             const field = Object.keys(err.keyPattern)[0];
             return res.status(400).json({ 
@@ -172,7 +174,7 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        // Find user by email or username
+        // Find user (email or username)
         const user = await User.findOne({ 
             $or: [
                 { email: email.toLowerCase() },
@@ -208,12 +210,14 @@ app.post('/api/auth/login', async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        // Return user data without password
+        // Return user data
         const userResponse = {
             id: user._id,
             username: user.username,
             email: user.email,
             profile: user.profile,
+            stats: user.stats,
+            account: user.account,
             createdAt: user.createdAt
         };
 
@@ -232,7 +236,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Token Authentication Middleware
+// Token authentication middleware
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -253,7 +257,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Get current user information with complete profile data
+// Get current user information
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select('-password');
@@ -270,6 +274,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
             email: user.email,
             profile: user.profile,
             stats: user.stats,
+            account: user.account,
             createdAt: user.createdAt
         });
     } catch (err) {
@@ -289,20 +294,45 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-// Update user profile with complete profile support
+// Get user profile by username
+app.get('/api/users/profile/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+
+        const user = await User.findOne({ username }).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const userResponse = {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            profile: user.profile,
+            stats: user.stats,
+            account: user.account,
+            createdAt: user.createdAt
+        };
+
+        res.json(userResponse);
+
+    } catch (error) {
+        console.error('Get user profile error:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch user profile',
+            error: error.message 
+        });
+    }
+});
+
+// Update user profile
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
     try {
         const { username, profile } = req.body;
         const userId = req.user.userId;
 
-        // Validate required fields
-        if (!username) {
-            return res.status(400).json({
-                message: 'Username is required'
-            });
-        }
-
-        // Check if the username is taken by another user
+        // Check if the username is taken (frontend cannot verify this)
         if (username) {
             const existingUser = await User.findOne({ 
                 username, 
@@ -318,23 +348,8 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
 
         // Prepare update data
         const updateData = { username };
-        
-        // Handle profile updates
         if (profile) {
-            // Validate profile fields
-            const allowedProfileFields = [
-                'firstName', 'lastName', 'displayName', 'bio', 
-                'location', 'website', 'phoneNumber'
-            ];
-            
-            const profileUpdates = {};
-            allowedProfileFields.forEach(field => {
-                if (profile[field] !== undefined) {
-                    profileUpdates[`profile.${field}`] = profile[field];
-                }
-            });
-            
-            Object.assign(updateData, profileUpdates);
+            updateData.profile = profile;
         }
 
         // Update user data
@@ -355,21 +370,14 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
                 username: updatedUser.username,
                 email: updatedUser.email,
                 profile: updatedUser.profile,
+                stats: updatedUser.stats,
+                account: updatedUser.account,
                 createdAt: updatedUser.createdAt
             }
         });
 
     } catch (err) {
         console.error('Update profile error:', err);
-        
-        // Handle validation errors
-        if (err.name === 'ValidationError') {
-            const errors = Object.values(err.errors).map(e => e.message);
-            return res.status(400).json({ 
-                message: 'Validation failed: ' + errors.join(', ')
-            });
-        }
-        
         res.status(500).json({ 
             message: 'Failed to update profile',
             error: err.message 
@@ -377,75 +385,85 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     }
 });
 
-// Upload avatar endpoint
-app.post('/api/users/avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
+// Avatar upload endpoint
+app.post('/api/users/avatar', authenticateToken, avatarUpload.single('avatar'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({
-                message: 'No image file provided'
+            return res.status(400).json({ 
+                message: 'No image file provided' 
             });
         }
 
         const userId = req.user.userId;
+        const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/avatars/${req.file.filename}`;
+
+        // Get current user
         const user = await User.findById(userId);
-        
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Delete old avatar file if exists
-        if (user.profile.profilePicture && user.profile.profilePicture.url) {
-            const oldFilename = path.basename(user.profile.profilePicture.url);
-            const oldFilePath = path.join(uploadsDir, oldFilename);
-            
-            try {
-                if (fs.existsSync(oldFilePath)) {
-                    fs.unlinkSync(oldFilePath);
-                }
-            } catch (deleteErr) {
-                console.error('Error deleting old avatar:', deleteErr);
-                // Don't fail the request if old file deletion fails
+        // Delete old avatar file (if exists)
+        if (user.profile && user.profile.profilePicture && user.profile.profilePicture.filename) {
+            const oldAvatarPath = path.join(uploadDir, user.profile.profilePicture.filename);
+            if (fs.existsSync(oldAvatarPath)) {
+                fs.unlinkSync(oldAvatarPath);
             }
         }
 
-        // Generate avatar URL
-        const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/avatars/${req.file.filename}`;
-
-        // Update user's profile picture
-        user.profile.profilePicture = {
-            url: avatarUrl,
-            publicId: req.file.filename,
-            uploadedAt: new Date()
+        // Update user avatar information
+        const updateData = {
+            'profile.profilePicture': {
+                url: avatarUrl,
+                filename: req.file.filename,
+                uploadedAt: new Date()
+            }
         };
 
-        await user.save();
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
         res.json({
             message: 'Avatar uploaded successfully',
             avatarUrl: avatarUrl,
             user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                profile: user.profile
+                id: updatedUser._id,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                profile: updatedUser.profile,
+                stats: updatedUser.stats,
+                account: updatedUser.account,
+                createdAt: updatedUser.createdAt
             }
         });
 
-    } catch (err) {
-        console.error('Avatar upload error:', err);
+    } catch (error) {
+        console.error('Avatar upload error:', error);
         
-        // Clean up uploaded file if database update fails
+        // Delete uploaded file if there's an error
         if (req.file) {
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteErr) {
-                console.error('Error deleting uploaded file:', deleteErr);
+            const filePath = path.join(uploadDir, req.file.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
             }
+        }
+        
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ 
+                message: 'File size too large. Maximum size is 5MB.' 
+            });
         }
         
         res.status(500).json({ 
             message: 'Failed to upload avatar',
-            error: err.message 
+            error: error.message 
         });
     }
 });
@@ -456,110 +474,87 @@ app.put('/api/users/password', authenticateToken, async (req, res) => {
         const { currentPassword, newPassword } = req.body;
         const userId = req.user.userId;
 
-        console.log('Password change request received for user:', userId);
-        console.log('Request body:', { currentPassword: '***', newPassword: '***' });
-
         // Validate input
         if (!currentPassword || !newPassword) {
-            console.log('Missing password fields');
-            return res.status(400).json({
-                message: 'Current password and new password are required'
+            return res.status(400).json({ 
+                message: 'Current password and new password are required' 
             });
         }
 
         if (newPassword.length < 6) {
-            console.log('New password too short');
-            return res.status(400).json({
-                message: 'New password must be at least 6 characters long'
+            return res.status(400).json({ 
+                message: 'New password must be at least 6 characters long' 
             });
         }
 
-        // Find user with password field included
-        const user = await User.findById(userId).select('+password');
+        // Get user
+        const user = await User.findById(userId);
         if (!user) {
-            console.log('User not found:', userId);
             return res.status(404).json({ message: 'User not found' });
         }
-
-        console.log('User found, verifying current password...');
 
         // Verify current password
         const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
         if (!isCurrentPasswordValid) {
-            console.log('Current password verification failed');
-            return res.status(400).json({
-                message: 'Current password is incorrect'
+            return res.status(400).json({ 
+                message: 'Current password is incorrect' 
             });
         }
-
-        console.log('Current password verified, updating to new password...');
 
         // Hash new password
         const saltRounds = 12;
         const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
         // Update password
-        user.password = hashedNewPassword;
-        await user.save();
-
-        console.log('Password updated successfully for user:', userId);
+        await User.findByIdAndUpdate(userId, { password: hashedNewPassword });
 
         res.json({
-            message: 'Password changed successfully'
+            message: 'Password updated successfully'
         });
 
-    } catch (err) {
-        console.error('Password change error:', err);
+    } catch (error) {
+        console.error('Change password error:', error);
         res.status(500).json({ 
             message: 'Failed to change password',
-            error: err.message 
+            error: error.message 
         });
     }
 });
 
-// Get user profile by username
-app.get('/api/users/profile/:username', async (req, res) => {
+// Check follow status endpoint
+app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) => {
     try {
-        const { username } = req.params;
-        
-        const user = await User.findOne({ username })
-            .select('-password')
-            .populate('relationships.followers.user', 'username profile.profilePicture')
-            .populate('relationships.following.user', 'username profile.profilePicture');
-        
-        if (!user) {
+        const { userId } = req.params;
+        const currentUserId = req.user.userId;
+
+        if (currentUserId === userId) {
+            return res.json({ isFollowing: false }); // Cannot follow yourself
+        }
+
+        const currentUser = await User.findById(currentUserId);
+        if (!currentUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Return public profile data
-        const profileData = {
-            id: user._id,
-            username: user.username,
-            email: user.email, // You might want to hide this for non-own profiles
-            profile: user.profile,
-            stats: user.stats,
-            account: {
-                isVerified: user.account.isVerified,
-                accountType: user.account.accountType
-            },
-            createdAt: user.createdAt
-        };
+        const isFollowing = currentUser.relationships.following.some(
+            follow => follow.user.toString() === userId
+        );
 
-        res.json(profileData);
+        res.json({ isFollowing });
 
-    } catch (err) {
-        console.error('Get user profile error:', err);
+    } catch (error) {
+        console.error('Check follow status error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// Follow a user
+// Follow user endpoint
 app.post('/api/users/:userId/follow', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
         const currentUserId = req.user.userId;
 
-        if (userId === currentUserId) {
+        if (currentUserId === userId) {
             return res.status(400).json({ message: 'Cannot follow yourself' });
         }
 
@@ -568,42 +563,37 @@ app.post('/api/users/:userId/follow', authenticateToken, async (req, res) => {
             User.findById(userId)
         ]);
 
-        if (!targetUser) {
+        if (!currentUser || !targetUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
         // Check if already following
-        const isAlreadyFollowing = currentUser.relationships.following.some(
-            f => f.user.toString() === userId
+        const alreadyFollowing = currentUser.relationships.following.some(
+            follow => follow.user.toString() === userId
         );
 
-        if (isAlreadyFollowing) {
+        if (alreadyFollowing) {
             return res.status(400).json({ message: 'Already following this user' });
         }
 
-        // Add to following list
+        // Add follow relationship
         currentUser.relationships.following.push({ user: userId });
         currentUser.stats.followingCount += 1;
 
-        // Add to followers list
         targetUser.relationships.followers.push({ user: currentUserId });
         targetUser.stats.followersCount += 1;
 
         await Promise.all([currentUser.save(), targetUser.save()]);
 
-        res.json({
-            message: 'Successfully followed user',
-            isFollowing: true,
-            followersCount: targetUser.stats.followersCount
-        });
+        res.json({ message: 'Successfully followed user' });
 
-    } catch (err) {
-        console.error('Follow user error:', err);
+    } catch (error) {
+        console.error('Follow user error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// Unfollow a user
+// Unfollow user endpoint
 app.post('/api/users/:userId/unfollow', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
@@ -614,84 +604,32 @@ app.post('/api/users/:userId/unfollow', authenticateToken, async (req, res) => {
             User.findById(userId)
         ]);
 
-        if (!targetUser) {
+        if (!currentUser || !targetUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Remove from following list
+        // Remove follow relationship
         currentUser.relationships.following = currentUser.relationships.following.filter(
-            f => f.user.toString() !== userId
+            follow => follow.user.toString() !== userId
         );
         currentUser.stats.followingCount = Math.max(0, currentUser.stats.followingCount - 1);
 
-        // Remove from followers list
         targetUser.relationships.followers = targetUser.relationships.followers.filter(
-            f => f.user.toString() !== currentUserId
+            follower => follower.user.toString() !== currentUserId
         );
         targetUser.stats.followersCount = Math.max(0, targetUser.stats.followersCount - 1);
 
         await Promise.all([currentUser.save(), targetUser.save()]);
 
-        res.json({
-            message: 'Successfully unfollowed user',
-            isFollowing: false,
-            followersCount: targetUser.stats.followersCount
-        });
+        res.json({ message: 'Successfully unfollowed user' });
 
-    } catch (err) {
-        console.error('Unfollow user error:', err);
+    } catch (error) {
+        console.error('Unfollow user error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// Check follow status
-app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const currentUserId = req.user.userId;
-
-        if (userId === currentUserId) {
-            return res.json({ isFollowing: false }); // Can't follow yourself
-        }
-
-        const currentUser = await User.findById(currentUserId);
-        if (!currentUser) {
-            return res.status(404).json({ message: 'Current user not found' });
-        }
-
-        const isFollowing = currentUser.relationships.following.some(
-            f => f.user.toString() === userId
-        );
-
-        res.json({ isFollowing });
-
-    } catch (err) {
-        console.error('Check follow status error:', err);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-app.use((error, req, res, next) => {
-    if (error instanceof multer.MulterError) {
-        if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-                message: 'File size too large. Maximum size is 5MB.'
-            });
-        }
-        return res.status(400).json({
-            message: 'File upload error: ' + error.message
-        });
-    }
-    
-    if (error.message === 'Only image files are allowed') {
-        return res.status(400).json({
-            message: 'Only image files are allowed'
-        });
-    }
-    
-    next(error);
-});
-
-// General error handling middleware
+// Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Something went wrong!' });
@@ -705,7 +643,11 @@ app.listen(PORT, () => {
     console.log('- POST /api/auth/login (login)');
     console.log('- GET /api/auth/me (get current user)');
     console.log('- GET /api/users (get all users)');
+    console.log('- GET /api/users/profile/:username (get user profile)');
     console.log('- PUT /api/users/profile (update profile)');
     console.log('- POST /api/users/avatar (upload avatar)');
     console.log('- PUT /api/users/password (change password)');
+    console.log('- GET /api/users/:userId/follow-status (check follow status)');
+    console.log('- POST /api/users/:userId/follow (follow user)');
+    console.log('- POST /api/users/:userId/unfollow (unfollow user)');
 });

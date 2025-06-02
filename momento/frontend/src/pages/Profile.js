@@ -8,7 +8,7 @@ import CollectionCard from '../components/CollectionCard/CollectionCard';
 import { AuthContext } from '../contexts/AuthContext';
 
 /**
- * Profile Page
+ * Profile Page Component
  * 
  * Displays a user profile with their information, statistics, and posts.
  * Supports viewing both own profile and other users' profiles.
@@ -17,10 +17,10 @@ import { AuthContext } from '../contexts/AuthContext';
  */
 const Profile = () => {
     const navigate = useNavigate();
-    const { username } = useParams(); // Get username from URL params
-    const { currentUser, authToken, logout } = useContext(AuthContext);
+    const { username } = useParams(); // Extract username from URL parameters
+    const { currentUser, authToken, logout, updateUser } = useContext(AuthContext);
     
-    // State management
+    // Component state management
     const [activeTab, setActiveTab] = useState('Posts');
     const [profileUser, setProfileUser] = useState(null);
     const [isFollowing, setIsFollowing] = useState(false);
@@ -29,10 +29,10 @@ const Profile = () => {
     const [posts, setPosts] = useState([]);
     const [collections, setCollections] = useState([]);
     
-    // Check if viewing own profile
+    // Determine if this is the user's own profile
     const isOwnProfile = !username || (currentUser && username === currentUser.username);
     
-    // Set up axios interceptor for authentication
+    // Set up axios interceptor for automatic authentication
     useEffect(() => {
         const interceptor = axios.interceptors.request.use(
             (config) => {
@@ -46,27 +46,46 @@ const Profile = () => {
             }
         );
 
+        // Cleanup interceptor on component unmount
         return () => {
             axios.interceptors.request.eject(interceptor);
         };
     }, [authToken]);
 
-    // Fetch user data on component mount
+    // Main data fetching effect - handles initial load and user changes
     useEffect(() => {
         if (isOwnProfile && currentUser) {
-            // Use current user data for own profile
+            // Use current user data for own profile with immediate sync
             setProfileUser(currentUser);
             setIsLoading(false);
         } else if (username) {
-            // Fetch other user's data
+            // Fetch other user's profile data from API
             fetchUserProfile(username);
         } else {
             // No username and no current user - redirect to login
             navigate('/login');
         }
-    }, [username, currentUser, isOwnProfile]);
+    }, [username, currentUser, isOwnProfile, navigate]);
 
-    // Fetch posts when profile user changes
+    // Real-time avatar synchronization effect
+    // Monitors currentUser's avatar changes and updates profile immediately
+    useEffect(() => {
+        if (isOwnProfile && currentUser && profileUser) {
+            // Check if avatar URL has changed
+            const currentAvatarUrl = currentUser.profile?.profilePicture?.url;
+            const profileAvatarUrl = profileUser.profile?.profilePicture?.url;
+            
+            if (currentAvatarUrl !== profileAvatarUrl) {
+                console.log('Avatar change detected, updating profile:', {
+                    old: profileAvatarUrl,
+                    new: currentAvatarUrl
+                });
+                setProfileUser(currentUser);
+            }
+        }
+    }, [currentUser?.profile?.profilePicture?.url, isOwnProfile, profileUser]);
+
+    // Fetch posts and collections when profile user changes
     useEffect(() => {
         if (profileUser) {
             fetchUserPosts();
@@ -74,7 +93,17 @@ const Profile = () => {
         }
     }, [profileUser]);
 
-    // Fetch user profile data
+    // Initial data refresh for own profile to ensure latest information
+    useEffect(() => {
+        if (isOwnProfile && authToken) {
+            refreshCurrentUserData();
+        }
+    }, []); // Run only once on component mount
+
+    /**
+     * Fetch user profile data from API by username
+     * @param {string} usernameParam - Username to fetch profile for
+     */
     const fetchUserProfile = async (usernameParam) => {
         try {
             setIsLoading(true);
@@ -87,7 +116,7 @@ const Profile = () => {
             const userData = response.data;
             setProfileUser(userData);
 
-            // Check if current user is following this user
+            // Check follow status if viewing another user's profile
             if (currentUser && userData.id !== currentUser.id) {
                 checkFollowStatus(userData.id);
             }
@@ -108,7 +137,44 @@ const Profile = () => {
         }
     };
 
-    // Check if current user follows this profile user
+    /**
+     * Refresh current user data from API
+     * Ensures profile displays the most up-to-date information
+     */
+    const refreshCurrentUserData = async () => {
+        if (!isOwnProfile || !authToken) return;
+        
+        try {
+            const response = await axios.get(
+                `${process.env.REACT_APP_API_BASE_URL}/api/auth/me`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`
+                    }
+                }
+            );
+            
+            const userData = response.data;
+            setProfileUser(userData);
+            
+            // Sync with AuthContext to maintain consistency
+            updateUser(userData);
+            
+            console.log('Current user data refreshed:', userData);
+            
+        } catch (error) {
+            console.error('Error refreshing user data:', error);
+            if (error.response?.status === 401) {
+                logout();
+                navigate('/login');
+            }
+        }
+    };
+
+    /**
+     * Check if current user is following the profile user
+     * @param {string} userId - ID of the user to check follow status for
+     */
     const checkFollowStatus = async (userId) => {
         try {
             const response = await axios.get(
@@ -120,11 +186,14 @@ const Profile = () => {
         }
     };
 
-    // Fetch user posts (placeholder for future implementation)
+    /**
+     * Fetch user's posts from API
+     * Currently uses mock data - will be replaced with real API call
+     */
     const fetchUserPosts = async () => {
         try {
             // TODO: Implement posts API endpoint
-            // For now, using mock data
+            // For now, using mock data for demonstration
             const mockPosts = [
                 {
                     id: 1,
@@ -157,11 +226,14 @@ const Profile = () => {
         }
     };
 
-    // Fetch user collections (placeholder for future implementation)
+    /**
+     * Fetch user's collections from API
+     * Currently uses mock data - will be replaced with real API call
+     */
     const fetchUserCollections = async () => {
         try {
             // TODO: Implement collections API endpoint
-            // For now, using mock data
+            // For now, using mock data for demonstration
             const mockCollections = [
                 { id: 1, title: "Fashion Inspiration", posts: 32, isPrivate: false },
                 { id: 2, title: "Travel Bucket List", posts: 24, isPrivate: false },
@@ -172,7 +244,7 @@ const Profile = () => {
                 { id: 7, title: "Favorite Books", posts: 12, isPrivate: false },
             ];
             
-            // Filter private collections if not own profile
+            // Filter private collections for non-own profiles
             const filteredCollections = isOwnProfile 
                 ? mockCollections 
                 : mockCollections.filter(collection => !collection.isPrivate);
@@ -183,7 +255,11 @@ const Profile = () => {
         }
     };
     
-    // Format numbers over 1000 to K format (e.g., 1.2K)
+    /**
+     * Format large numbers with K/M suffixes for better readability
+     * @param {number} num - Number to format
+     * @returns {string} - Formatted number string
+     */
     const formatNumber = (num) => {
         if (num >= 1000000) {
             return (num / 1000000).toFixed(1) + 'M';
@@ -193,12 +269,17 @@ const Profile = () => {
         return num.toString();
     };
     
-    // Handle tab switching
+    /**
+     * Handle content tab switching
+     * @param {string} tab - Tab name to switch to
+     */
     const handleTabClick = (tab) => {
         setActiveTab(tab);
     };
     
-    // Handle follow/unfollow button click
+    /**
+     * Handle follow/unfollow button click with optimistic updates
+     */
     const handleFollowClick = async () => {
         if (!currentUser) {
             navigate('/login');
@@ -211,9 +292,10 @@ const Profile = () => {
                 `${process.env.REACT_APP_API_BASE_URL}/api/users/${profileUser.id}/${endpoint}`
             );
 
+            // Update follow status immediately
             setIsFollowing(!isFollowing);
             
-            // Update follower count locally
+            // Update follower count locally for immediate feedback
             setProfileUser(prev => ({
                 ...prev,
                 stats: {
@@ -234,7 +316,9 @@ const Profile = () => {
         }
     };
   
-    // Handle message button click
+    /**
+     * Handle message button click - navigate to chat
+     */
     const handleMessageClick = () => {
         if (!currentUser) {
             navigate('/login');
@@ -242,7 +326,7 @@ const Profile = () => {
         }
         
         // TODO: Implement messaging functionality
-        // For now, navigate to chat page
+        // For now, navigate to chat page with recipient data
         navigate('/chat', { 
             state: { 
                 recipientUser: profileUser 
@@ -250,12 +334,18 @@ const Profile = () => {
         });
     };
     
-    // Navigate to settings (only for own profile)
+    /**
+     * Navigate to settings page (only for own profile)
+     */
     const handleSettingsClick = () => {
         navigate('/settings');
     };
 
-    // Format join date
+    /**
+     * Format join date for display
+     * @param {string} dateString - ISO date string
+     * @returns {string} - Formatted date string
+     */
     const formatJoinDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { 
@@ -264,7 +354,7 @@ const Profile = () => {
         });
     };
 
-    // Show loading state
+    // Loading state display
     if (isLoading) {
         return (
             <div className="profile-container">
@@ -277,7 +367,7 @@ const Profile = () => {
         );
     }
 
-    // Show error state
+    // Error state display
     if (error) {
         return (
             <div className="profile-container">
@@ -293,7 +383,7 @@ const Profile = () => {
         );
     }
 
-    // Show profile not found
+    // Profile not found state
     if (!profileUser) {
         return (
             <div className="profile-container">
@@ -311,26 +401,32 @@ const Profile = () => {
   
     return (
         <div className="profile-container">
-            {/* Navigation bar */}
+            {/* Main Navigation Bar */}
             <Navbar />
             
-            {/* Profile content */}
+            {/* Profile Content Container */}
             <div className="profile-content">
-                {/* User info section */}
+                {/* User Information Header Section */}
                 <div className="profile-header">
-                    {/* Settings button - only show for own profile */}
+                    {/* Settings Button - Only visible for own profile */}
                     {isOwnProfile && (
                         <button className="settings-button" onClick={handleSettingsClick}>
                             ⚙️ Settings
                         </button>
                     )}
                     
+                    {/* Profile Avatar with Real-time Sync */}
                     <div className="profile-avatar">
                         {profileUser.profile?.profilePicture?.url ? (
                             <img 
                                 src={profileUser.profile.profilePicture.url} 
                                 alt={`${profileUser.username}'s profile`}
                                 className="avatar-image"
+                                onError={(e) => {
+                                    // Fallback to placeholder if image fails to load
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                }}
                             />
                         ) : (
                             <div className="avatar-placeholder">
@@ -339,7 +435,9 @@ const Profile = () => {
                         )}
                     </div>
 
+                    {/* Profile Information Section */}
                     <div className="profile-info">
+                        {/* Username and Verification Badge */}
                         <div className="profile-name-container">
                             <h1 className="profile-username">{profileUser.username}</h1>
                             {profileUser.account?.isVerified && (
@@ -347,16 +445,19 @@ const Profile = () => {
                             )}
                         </div>
                         
+                        {/* Display Name (if different from username) */}
                         {profileUser.profile?.displayName && (
                             <h2 className="profile-display-name">
                                 {profileUser.profile.displayName}
                             </h2>
                         )}
                         
+                        {/* User Bio */}
                         {profileUser.profile?.bio && (
                             <p className="profile-bio">{profileUser.profile.bio}</p>
                         )}
                     
+                        {/* Profile Metadata (Location, Join Date, Website) */}
                         <div className="profile-meta">
                             {profileUser.profile?.location && (
                                 <span>📍 {profileUser.profile.location}</span>
@@ -382,6 +483,7 @@ const Profile = () => {
                             )}
                         </div>
                         
+                        {/* Profile Statistics */}
                         <div className="profile-stats">
                             <div className="stat-item">
                                 <span className="stat-value">
@@ -405,7 +507,7 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        {/* Action buttons - only show for other users' profiles */}
+                        {/* Action Buttons - Only show for other users' profiles */}
                         {!isOwnProfile && currentUser && (
                             <div className="profile-actions">
                                 <button 
@@ -423,7 +525,7 @@ const Profile = () => {
                     </div>
                 </div>
                 
-                {/* Content tabs */}
+                {/* Content Navigation Tabs */}
                 <div className="profile-tabs">
                     <button 
                         className={`tab-button ${activeTab === 'Posts' ? 'active' : ''}`}
@@ -441,6 +543,7 @@ const Profile = () => {
                         Collections
                     </button>
 
+                    {/* Own Profile Exclusive Tabs */}
                     {isOwnProfile && (
                         <>
                             <button 
@@ -462,9 +565,9 @@ const Profile = () => {
                     )}
                 </div>
                 
-                {/* Content area */}
+                {/* Content Display Area */}
                 <div className="tab-content">
-                    {/* Posts grid */}
+                    {/* Posts Tab Content */}
                     {activeTab === 'Posts' && (
                         <div className="posts-grid">
                             {posts.length > 0 ? (
@@ -503,7 +606,7 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Collections grid */}
+                    {/* Collections Tab Content */}
                     {activeTab === 'Collections' && (
                         <div className="posts-grid">
                             {collections.length > 0 ? (
@@ -530,7 +633,7 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Liked posts - only for own profile */}
+                    {/* Liked Posts Tab - Only for own profile */}
                     {activeTab === 'Liked' && isOwnProfile && (
                         <div className="posts-grid">
                             {posts.length > 0 ? (
@@ -558,7 +661,7 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Tagged posts - only for own profile */}
+                    {/* Tagged Posts Tab - Only for own profile */}
                     {activeTab === 'Tagged' && isOwnProfile && (
                         <div className="posts-grid">
                             {posts.length > 0 ? (

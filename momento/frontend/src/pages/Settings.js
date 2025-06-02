@@ -22,14 +22,14 @@ const Settings = () => {
     const { currentUser, logout, updateUser, authToken } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('Account');
     
-    // Loading and UI states
+    // Loading and UI state management
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     
-    // Form state - initialize with current user data
+    // Form state - initialized with current user data
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -45,19 +45,19 @@ const Settings = () => {
         confirmPassword: ''
     });
 
-    // Original data for change detection
+    // Original data for detecting changes
     const [originalData, setOriginalData] = useState({});
     
-    // Avatar state
+    // Avatar management state
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
 
-    // Fetch current user data on component mount
+    // Fetch current user data when component mounts
     useEffect(() => {
         fetchUserData();
     }, []);
 
-    // Set up axios interceptor for token
+    // Set up axios interceptor for authentication token
     useEffect(() => {
         const interceptor = axios.interceptors.request.use(
             (config) => {
@@ -71,12 +71,16 @@ const Settings = () => {
             }
         );
 
+        // Cleanup interceptor on component unmount
         return () => {
             axios.interceptors.request.eject(interceptor);
         };
     }, [authToken]);
 
-    // Fetch user data from backend
+    /**
+     * Fetch user data from backend API
+     * Populates form with current user information
+     */
     const fetchUserData = async () => {
         if (!authToken) {
             navigate('/login');
@@ -133,7 +137,10 @@ const Settings = () => {
         }
     };
     
-    // Handle input changes with validation
+    /**
+     * Handle input field changes with real-time validation
+     * @param {Event} e - Input change event
+     */
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         
@@ -150,7 +157,7 @@ const Settings = () => {
             }));
         }
 
-        // Clear general errors
+        // Clear general errors when user makes changes
         if (errors.general) {
             setErrors(prev => ({
                 ...prev,
@@ -163,33 +170,36 @@ const Settings = () => {
             setSuccessMessage('');
         }
 
-        // Check for unsaved changes
+        // Detect unsaved changes
         const newData = { ...formData, [name]: value };
         const hasChanges = Object.keys(originalData).some(key => {
             if (key.includes('Password')) return false; // Ignore password fields for change detection
             return originalData[key] !== newData[key];
         });
         
-        // Also check if there's a password change
+        // Check for password changes
         const hasPasswordChange = newData.newPassword || newData.currentPassword || newData.confirmPassword;
         
-        // Check if there's an avatar change
+        // Check for avatar changes
         const hasAvatarChange = avatarFile !== null;
         
         setHasUnsavedChanges(hasChanges || hasPasswordChange || hasAvatarChange);
     };
     
-    // Handle avatar file selection
+    /**
+     * Handle avatar file selection and validation
+     * @param {Event} e - File input change event
+     */
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Validate file type
+            // Validate file type - only images allowed
             if (!file.type.startsWith('image/')) {
                 setErrors({ avatar: 'Please select a valid image file' });
                 return;
             }
             
-            // Validate file size (max 5MB)
+            // Validate file size - maximum 5MB
             if (file.size > 5 * 1024 * 1024) {
                 setErrors({ avatar: 'Image size should be less than 5MB' });
                 return;
@@ -197,31 +207,36 @@ const Settings = () => {
             
             setAvatarFile(file);
             
-            // Create preview URL
+            // Create preview URL for immediate display
             const previewUrl = URL.createObjectURL(file);
             setAvatarPreview(previewUrl);
             
             setHasUnsavedChanges(true);
             
-            // Clear avatar error
+            // Clear avatar-related errors
             if (errors.avatar) {
                 setErrors(prev => ({ ...prev, avatar: '' }));
             }
         }
     };
     
-    // Trigger avatar file input
+    /**
+     * Trigger file input click for avatar upload
+     */
     const triggerAvatarUpload = () => {
         const fileInput = document.getElementById('avatar-upload');
         fileInput.click();
     };
     
-    // Form validation
+    /**
+     * Comprehensive form validation
+     * @returns {boolean} - True if form is valid, false otherwise
+     */
     const validateForm = () => {
         let tempErrors = {};
         let isValid = true;
 
-        // Username validation
+        // Username validation - required field
         if (!formData.username.trim()) {
             tempErrors.username = 'Username is required';
             isValid = false;
@@ -233,7 +248,7 @@ const Settings = () => {
             isValid = false;
         }
 
-        // Email validation
+        // Email validation - required field
         if (!formData.email.trim()) {
             tempErrors.email = 'Email is required';
             isValid = false;
@@ -242,7 +257,7 @@ const Settings = () => {
             isValid = false;
         }
 
-        // Website validation (if provided)
+        // Website validation (optional field)
         if (formData.website && formData.website.trim()) {
             const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
             if (!urlPattern.test(formData.website)) {
@@ -251,7 +266,7 @@ const Settings = () => {
             }
         }
 
-        // Phone number validation (if provided)
+        // Phone number validation (optional field)
         if (formData.phoneNumber && formData.phoneNumber.trim()) {
             const phonePattern = /^\+?[\d\s\-\(\)]{10,20}$/;
             if (!phonePattern.test(formData.phoneNumber)) {
@@ -260,7 +275,7 @@ const Settings = () => {
             }
         }
 
-        // Password validation (if changing password)
+        // Password validation (only if changing password)
         if (formData.newPassword || formData.confirmPassword || formData.currentPassword) {
             console.log('Validating password fields:', {
                 currentPassword: formData.currentPassword ? '***' : 'empty',
@@ -292,7 +307,10 @@ const Settings = () => {
         return isValid;
     };
     
-    // Handle tab switching
+    /**
+     * Handle navigation tab switching with unsaved changes warning
+     * @param {string} tab - Tab name to switch to
+     */
     const handleTabClick = (tab) => {
         if (hasUnsavedChanges) {
             const confirmLeave = window.confirm(
@@ -305,7 +323,9 @@ const Settings = () => {
         setSuccessMessage('');
     };
     
-    // Handle save button click
+    /**
+     * Main save function - orchestrates profile, avatar, and password updates
+     */
     const handleSave = async () => {
         if (!validateForm()) {
             return;
@@ -320,7 +340,7 @@ const Settings = () => {
             let avatarUploadSuccessful = false;
             let errorOccurred = false;
 
-            // Step 1: Update profile information
+            // Step 1: Update profile information if changed
             const profileHasChanges = Object.keys(originalData).some(key => {
                 if (key.includes('Password')) return false;
                 return originalData[key] !== formData[key];
@@ -337,7 +357,7 @@ const Settings = () => {
                 }
             }
 
-            // Step 2: Handle avatar upload
+            // Step 2: Handle avatar upload if new file selected
             if (avatarFile && !errorOccurred) {
                 try {
                     await uploadAvatar();
@@ -349,7 +369,7 @@ const Settings = () => {
                 }
             }
 
-            // Step 3: Handle password change
+            // Step 3: Handle password change if requested
             if (formData.newPassword && formData.currentPassword && !errorOccurred) {
                 try {
                     await changePassword();
@@ -361,7 +381,7 @@ const Settings = () => {
                 }
             }
 
-            // Only update UI state if no errors occurred
+            // Update UI state only if no errors occurred
             if (!errorOccurred) {
                 // Update original data to reflect current state
                 const newOriginalData = { ...formData };
@@ -373,7 +393,7 @@ const Settings = () => {
                 setHasUnsavedChanges(false);
                 setAvatarFile(null);
                 
-                // Clear password fields
+                // Clear password fields for security
                 setFormData(prev => ({
                     ...prev,
                     currentPassword: '',
@@ -381,7 +401,7 @@ const Settings = () => {
                     confirmPassword: ''
                 }));
 
-                // Show success message based on what was updated
+                // Generate appropriate success message
                 let message = 'Settings updated successfully!';
                 if (updateSuccessful && passwordChangeSuccessful && avatarUploadSuccessful) {
                     message = 'Profile, avatar, and password updated successfully!';
@@ -412,7 +432,9 @@ const Settings = () => {
         }
     };
 
-    // Update profile data
+    /**
+     * Update profile data via API
+     */
     const updateProfileData = async () => {
         try {
             const updateData = {
@@ -439,8 +461,11 @@ const Settings = () => {
                 }
             );
 
-            // Update local user data
-            updateUser(response.data.user);
+            // Critical: Update AuthContext with new user data for immediate sync
+            if (response.data.user) {
+                updateUser(response.data.user);
+            }
+            
             console.log('Profile updated successfully:', response.data);
 
         } catch (error) {
@@ -470,7 +495,9 @@ const Settings = () => {
         }
     };
 
-    // Upload avatar
+    /**
+     * Upload avatar file to server
+     */
     const uploadAvatar = async () => {
         try {
             const formDataObj = new FormData();
@@ -487,8 +514,14 @@ const Settings = () => {
                 }
             );
 
-            // Update avatar preview with the new URL
+            // Update avatar preview with new URL
             setAvatarPreview(response.data.avatarUrl);
+            
+            // Critical: Update AuthContext with new user data for immediate sync
+            if (response.data.user) {
+                updateUser(response.data.user);
+            }
+            
             console.log('Avatar uploaded successfully:', response.data);
 
         } catch (error) {
@@ -512,7 +545,9 @@ const Settings = () => {
         }
     };
 
-    // Change password
+    /**
+     * Change user password via API
+     */
     const changePassword = async () => {
         try {
             const passwordData = {
@@ -567,7 +602,9 @@ const Settings = () => {
         }
     };
     
-    // Handle logout
+    /**
+     * Handle user logout with unsaved changes warning
+     */
     const handleLogout = () => {
         if (hasUnsavedChanges) {
             const confirmLogout = window.confirm(
@@ -580,7 +617,7 @@ const Settings = () => {
         navigate('/login');
     };
     
-    // Settings navigation items
+    // Settings navigation configuration
     const settingsNav = [
         { name: 'Account', action: () => handleTabClick('Account') },
         { name: 'Privacy', action: () => handleTabClick('Privacy') },
@@ -594,7 +631,7 @@ const Settings = () => {
         { name: 'Log Out', action: handleLogout, isLogout: true }
     ];
 
-    // Show loading screen while fetching data
+    // Show loading screen while fetching initial data
     if (isFetching) {
         return (
             <div className="settings-page">
@@ -608,7 +645,7 @@ const Settings = () => {
     
     return (
         <div className="settings-page">
-            {/* Header */}
+            {/* Settings Header with Logo and Save Button */}
             <div className="settings-header">
                 <div className="settings-logo" onClick={() => navigate('/home')}>
                     <img src={logoImage} alt="Momento Logo" className="settings-logo-image" />
@@ -624,25 +661,25 @@ const Settings = () => {
                 </button>
             </div>
 
-            {/* Success Message */}
+            {/* Success Message Banner */}
             {successMessage && (
                 <div className="success-banner">
                     <p>{successMessage}</p>
                 </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Message Banner */}
             {errors.general && (
                 <div className="error-banner">
                     <p>{errors.general}</p>
                 </div>
             )}
 
-            {/* Settings Content */}
+            {/* Main Settings Content */}
             <div className="settings-container">
                 <div className="settings-wrapper">
                     <div className="settings-content">
-                        {/* Settings navigation sidebar */}
+                        {/* Settings Navigation Sidebar */}
                         <div className="settings-nav">
                             {settingsNav.map((item) => (
                                 <button
@@ -655,17 +692,19 @@ const Settings = () => {
                             ))}
                         </div>
                         
-                        {/* Settings main content */}
+                        {/* Settings Main Content Area */}
                         <div className="settings-main">
+                            {/* Account Settings Tab */}
                             {activeTab === 'Account' && (
                                 <div className="account-settings">
                                     <h3>Account Settings</h3>
                                     
                                     <div className="profile-settings-container">
-                                        {/* Profile Information section */}
+                                        {/* Profile Information Section */}
                                         <div className="profile-info-section">
                                             <h4 className="section-title">Profile Information</h4>
                                             
+                                            {/* Name Fields Row */}
                                             <div className="form-row">
                                                 <div className="input-group">
                                                     <label>First Name</label>
@@ -696,6 +735,7 @@ const Settings = () => {
                                                 </div>
                                             </div>
                                             
+                                            {/* Display Name Field */}
                                             <div className="input-group">
                                                 <label>Display Name</label>
                                                 <input
@@ -710,6 +750,7 @@ const Settings = () => {
                                                 {errors.displayName && <span className="error-text">{errors.displayName}</span>}
                                             </div>
                                             
+                                            {/* Username Field - Required */}
                                             <div className="input-group">
                                                 <label>Username *</label>
                                                 <input
@@ -725,6 +766,7 @@ const Settings = () => {
                                                 <small className="input-hint">Your username is visible to other users</small>
                                             </div>
                                             
+                                            {/* Email Field - Required */}
                                             <div className="input-group">
                                                 <label>Email *</label>
                                                 <input
@@ -739,6 +781,7 @@ const Settings = () => {
                                                 {errors.email && <span className="error-text">{errors.email}</span>}
                                             </div>
                                             
+                                            {/* Bio Field with Character Counter */}
                                             <div className="input-group">
                                                 <label>Bio</label>
                                                 <textarea
@@ -755,6 +798,7 @@ const Settings = () => {
                                                 {errors.bio && <span className="error-text">{errors.bio}</span>}
                                             </div>
 
+                                            {/* Location and Phone Row */}
                                             <div className="form-row">
                                                 <div className="input-group">
                                                     <label>Location</label>
@@ -785,6 +829,7 @@ const Settings = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Website Field */}
                                             <div className="input-group">
                                                 <label>Website</label>
                                                 <input
@@ -800,7 +845,7 @@ const Settings = () => {
                                             </div>
                                         </div>
                                         
-                                        {/* Avatar section */}
+                                        {/* Avatar Management Section */}
                                         <div className="profile-avatar-section">
                                             <h4 className="section-title">Profile Avatar</h4>
                                             <div className="avatar-container">
@@ -838,9 +883,11 @@ const Settings = () => {
                                         </div>
                                     </div>
                                     
-                                    {/* Password section */}
+                                    {/* Password Change Section */}
                                     <div className="password-section">
                                         <h4 className="section-title">Change Password</h4>
+                                        
+                                        {/* Current Password Field */}
                                         <div className="form-row">
                                             <div className="input-group">
                                                 <label>Current Password</label>
@@ -857,6 +904,7 @@ const Settings = () => {
                                             </div>
                                         </div>
                                         
+                                        {/* New Password Fields Row */}
                                         <div className="form-row">
                                             <div className="input-group">
                                                 <label>New Password</label>
@@ -888,14 +936,14 @@ const Settings = () => {
                                             </div>
                                         </div>
                                         
-                                        {/* Display password change errors */}
+                                        {/* Password Change Error Display */}
                                         {errors.password && (
                                             <div className="error-banner" style={{ margin: '10px 0', padding: '10px' }}>
                                                 <p>{errors.password}</p>
                                             </div>
                                         )}
                                         
-                                        {/* Display password-specific success message */}
+                                        {/* Password Change Success Message */}
                                         {successMessage && successMessage.includes('password') && (
                                             <div className="success-banner" style={{ margin: '10px 0', padding: '10px' }}>
                                                 <p>{successMessage}</p>
@@ -905,7 +953,7 @@ const Settings = () => {
                                 </div>
                             )}
                             
-                            {/* Other tabs content (placeholder for future implementation) */}
+                            {/* Placeholder Tabs for Future Implementation */}
                             {activeTab === 'Privacy' && (
                                 <div className="privacy-settings">
                                     <h3>Privacy Settings</h3>
