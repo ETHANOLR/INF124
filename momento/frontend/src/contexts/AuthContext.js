@@ -1,11 +1,11 @@
-// contexts/AuthContext.js
+// frontend/src/contexts/AuthContext.js
 import React, { createContext, useState, useEffect } from 'react';
 
 /**
  * Authentication Context Provider
  * 
  * Provides authentication state and methods throughout the application.
- * Stores login status, user data, and auth token in localStorage for persistence.
+ * Stores login status, user data, and auth token in memory for session persistence.
  * Provides login, logout, and registration methods with real database integration.
  * Handles token-based authentication and automatic logout on token expiration.
  */
@@ -16,54 +16,64 @@ export const AuthContext = createContext();
 // Create authentication provider component
 export const AuthProvider = ({ children }) => {
     /**
-     * Initialize authentication state from localStorage if available
-     * Ensures user remains logged in across browser sessions
+     * Initialize authentication state in memory
+     * In production, you would initialize from localStorage
      */
-    const [isLoggedIn, setIsLoggedIn] = useState(() => {
-        const savedLoginState = localStorage.getItem('isLoggedIn');
-        const savedToken = localStorage.getItem('authToken');
-        // User is considered logged in only if both state and token exist
-        return savedLoginState && savedToken ? JSON.parse(savedLoginState) : false;
-    });
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
   
     /**
      * Current user data management
      * Stores complete user profile information including nested objects
      */
-    const [currentUser, setCurrentUser] = useState(() => {
-        const savedUser = localStorage.getItem('currentUser');
-        return savedUser ? JSON.parse(savedUser) : null;
-    });
+    const [currentUser, setCurrentUser] = useState(null);
 
     /**
      * Authentication token management
      * JWT token used for API authentication
      */
-    const [authToken, setAuthToken] = useState(() => {
-        return localStorage.getItem('authToken') || null;
-    });
+    const [authToken, setAuthToken] = useState(null);
 
     /**
-     * Synchronize authentication state with localStorage
-     * Automatically persists changes to localStorage for session persistence
+     * Socket connection state for real-time features
+     */
+    const [socketConnected, setSocketConnected] = useState(false);
+
+    /**
+     * Online status of current user
+     */
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    /**
+     * Monitor online/offline status
+     */
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    /**
+     * Log authentication state changes for debugging
      */
     useEffect(() => {
         if (isLoggedIn && currentUser && authToken) {
-            // Save authentication state to localStorage
-            localStorage.setItem('isLoggedIn', JSON.stringify(isLoggedIn));
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            localStorage.setItem('authToken', authToken);
-            
-            console.log('Authentication state saved to localStorage');
+            console.log('Authentication state updated:', {
+                isLoggedIn: true,
+                username: currentUser.username,
+                hasToken: !!authToken,
+                socketConnected
+            });
         } else {
-            // Clear localStorage if user is not authenticated
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('authToken');
-            
-            console.log('Authentication state cleared from localStorage');
+            console.log('Authentication state cleared');
         }
-    }, [isLoggedIn, currentUser, authToken]);
+    }, [isLoggedIn, currentUser, authToken, socketConnected]);
 
     /**
      * User login function
@@ -92,17 +102,13 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * User logout function
-     * Completely clears all authentication data and localStorage
+     * Completely clears all authentication data
      */
     const logout = () => {
         setIsLoggedIn(false);
         setCurrentUser(null);
         setAuthToken(null);
-        
-        // Immediately clear localStorage to ensure clean logout
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('authToken');
+        setSocketConnected(false);
         
         console.log('User logged out successfully - all data cleared');
     };
@@ -174,7 +180,12 @@ export const AuthProvider = ({ children }) => {
                 preferences: newUserData.preferences ? {
                     ...prevUser.preferences,
                     ...newUserData.preferences
-                } : prevUser.preferences
+                } : prevUser.preferences,
+                // Deep merge activity status
+                activity: {
+                    ...prevUser.activity,
+                    ...newUserData.activity
+                }
             };
             
             console.log('User data updated in context:', {
@@ -221,6 +232,32 @@ export const AuthProvider = ({ children }) => {
     };
 
     /**
+     * Update online status for current user
+     * @param {boolean} online - Online status
+     */
+    const updateOnlineStatus = (online) => {
+        setIsOnline(online);
+        if (currentUser) {
+            updateUser({
+                activity: {
+                    ...currentUser.activity,
+                    isOnline: online,
+                    lastActiveAt: new Date().toISOString()
+                }
+            });
+        }
+    };
+
+    /**
+     * Socket connection status update
+     * @param {boolean} connected - Socket connection status
+     */
+    const updateSocketStatus = (connected) => {
+        setSocketConnected(connected);
+        console.log(`Socket ${connected ? 'connected' : 'disconnected'}`);
+    };
+
+    /**
      * Token validation function
      * Basic validation - can be extended for JWT token expiration checking
      * @returns {boolean} - Token validity status
@@ -233,7 +270,6 @@ export const AuthProvider = ({ children }) => {
         
         try {
             // Basic token validation - check if token exists and has proper format
-            // TODO: Implement JWT token expiration validation here
             const tokenParts = authToken.split('.');
             if (tokenParts.length !== 3) {
                 console.log('Invalid token format');
@@ -241,12 +277,58 @@ export const AuthProvider = ({ children }) => {
                 return false;
             }
             
-            // For now, assume token is valid if it exists and has proper format
+            // Decode JWT payload to check expiration
+            try {
+                const payload = JSON.parse(atob(tokenParts[1]));
+                const currentTime = Math.floor(Date.now() / 1000);
+                
+                if (payload.exp && payload.exp < currentTime) {
+                    console.log('Token has expired');
+                    logout(); // Auto logout for expired tokens
+                    return false;
+                }
+            } catch (decodeError) {
+                console.log('Error decoding token payload');
+            }
+            
             console.log('Token validation passed');
             return true;
         } catch (error) {
             console.error('Token validation error:', error);
             logout(); // Auto logout if token validation fails
+            return false;
+        }
+    };
+
+    /**
+     * Refresh authentication status from server
+     * Useful for verifying token validity and getting updated user data
+     */
+    const refreshAuth = async () => {
+        if (!authToken || !isTokenValid()) {
+            return false;
+        }
+
+        try {
+            const response = await fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const userData = await response.json();
+                updateUser(userData);
+                console.log('Authentication refreshed successfully');
+                return true;
+            } else {
+                console.log('Authentication refresh failed');
+                logout();
+                return false;
+            }
+        } catch (error) {
+            console.error('Authentication refresh error:', error);
             return false;
         }
     };
@@ -261,8 +343,55 @@ export const AuthProvider = ({ children }) => {
             hasUser: !!currentUser,
             hasToken: !!authToken,
             username: currentUser?.username,
-            avatarUrl: currentUser?.profile?.profilePicture?.url
+            avatarUrl: currentUser?.profile?.profilePicture?.url,
+            isOnline,
+            socketConnected,
+            tokenValid: isTokenValid()
         });
+    };
+
+    /**
+     * Get display name for current user
+     * Priority: displayName > fullName > username
+     */
+    const getDisplayName = () => {
+        if (!currentUser) return '';
+        
+        const profile = currentUser.profile || {};
+        
+        if (profile.displayName) return profile.displayName;
+        if (profile.firstName && profile.lastName) {
+            return `${profile.firstName} ${profile.lastName}`;
+        }
+        if (profile.firstName) return profile.firstName;
+        
+        return currentUser.username || '';
+    };
+
+    /**
+     * Check if current user has specific permissions
+     * @param {string} permission - Permission to check
+     * @returns {boolean} - Has permission
+     */
+    const hasPermission = (permission) => {
+        if (!currentUser) return false;
+        
+        const userPermissions = currentUser.moderation?.permissions || [];
+        const isAdmin = currentUser.moderation?.isAdmin || false;
+        const isModerator = currentUser.moderation?.isModerator || false;
+        
+        // Admins have all permissions
+        if (isAdmin) return true;
+        
+        // Check specific permissions
+        if (userPermissions.includes(permission)) return true;
+        
+        // Moderators have certain default permissions
+        if (isModerator && ['moderate_content', 'view_reports'].includes(permission)) {
+            return true;
+        }
+        
+        return false;
     };
 
     /**
@@ -274,19 +403,26 @@ export const AuthProvider = ({ children }) => {
         isLoggedIn,
         currentUser,
         authToken,
+        isOnline,
+        socketConnected,
         
         // Authentication methods
         login,
         logout,
         register,
+        refreshAuth,
         
         // User data management
         updateUser,
         updateUserAvatar,
+        updateOnlineStatus,
+        updateSocketStatus,
         
         // Utility methods
         isTokenValid,
-        debugAuthState
+        debugAuthState,
+        getDisplayName,
+        hasPermission
     };
 
     return (
