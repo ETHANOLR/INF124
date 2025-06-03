@@ -18,18 +18,39 @@ const Chat = require('./models/Chats');
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://momento-frontend-deploy.s3-website-us-west-1.amazonaws.com',
+    'https://www.momento.lifestyle',
+    'https://d1pduukmezyk59.cloudfront.net'
+];
+
 // Configure Socket.IO with CORS
 const io = socketIo(server, {
     cors: {
-        origin: "http://localhost:3000", // Frontend URL
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 
 app.use(cors({
-    origin: "http://localhost:3000",
-    credentials: true
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            console.log('CORS allowed for origin:', origin);
+            callback(null, origin);
+        } else {
+            console.log('CORS blocked for origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 app.use(express.json());
 

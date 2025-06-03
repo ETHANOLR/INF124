@@ -131,7 +131,8 @@ const Login = () => {
                 {
                     email: formData.email,
                     password: formData.password
-                }
+                },
+                { withCredentials: true }
             );
             
             console.log('Login successful:', response.data);

@@ -187,7 +187,8 @@ const Chat = () => {
             setLoading(true);
             console.log('Fetching conversations...');
             
-            const response = await fetch('/api/chats', {
+            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+            const response = await fetch(`${API_BASE_URL}/api/chats`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
@@ -198,11 +199,10 @@ const Chat = () => {
                 const chats = await response.json();
                 console.log(`Fetched ${chats.length} conversations`);
                 
-                // Standardize all chat objects
+                // Rest of the function remains the same...
                 const standardizedChats = chats.map(standardizeChat);
                 setConversations(standardizedChats);
                 
-                // Extract unread counts
                 const unreadMap = {};
                 standardizedChats.forEach(chat => {
                     const chatId = getChatId(chat);
@@ -212,7 +212,6 @@ const Chat = () => {
                 });
                 setUnreadCounts(unreadMap);
 
-                // Join chat rooms via socket
                 if (socketRef.current && socketRef.current.connected) {
                     standardizedChats.forEach(chat => {
                         const chatId = getChatId(chat);
@@ -257,7 +256,10 @@ const Chat = () => {
             }
 
             setLoadingMessages(true);
-            const response = await fetch(`/api/chats/${chatId}/messages`, {
+            
+            // FIX: Use the same API base URL pattern
+            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+            const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}/messages`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
@@ -488,7 +490,7 @@ const Chat = () => {
                 [chatId]: 0
             }));
 
-            // 🔧 CRITICAL FIX: Always reload messages to ensure persistence
+            // CRITICAL FIX: Always reload messages to ensure persistence
             // This ensures that when users return to the chat page, they see their history
             console.log('Loading messages for conversation...');
             await fetchMessages(chatId, true); // Force reload every time
@@ -722,7 +724,8 @@ const Chat = () => {
                 throw new Error('Authentication required. Please log in again.');
             }
 
-            const response = await fetch('/api/users', {
+            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+            const response = await fetch(`${API_BASE_URL}/api/users`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
@@ -773,7 +776,9 @@ const Chat = () => {
                 throw new Error('Invalid user ID');
             }
 
-            const response = await fetch('/api/chats', {
+            // FIX: Use the same API base URL pattern as fetchAvailableUsers
+            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+            const response = await fetch(`${API_BASE_URL}/api/chats`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -783,15 +788,27 @@ const Chat = () => {
             });
 
             console.log('Create chat response status:', response.status);
-
+            
+            // Add more detailed error handling
             if (!response.ok) {
                 let errorMessage = `HTTP ${response.status}`;
+                
+                // Try to get JSON error response
                 try {
                     const errorData = await response.json();
                     errorMessage = errorData.message || errorMessage;
+                    console.error('Server error response:', errorData);
                 } catch (e) {
-                    errorMessage = `${errorMessage}: ${response.statusText}`;
+                    // If JSON parsing fails, try to get text response
+                    try {
+                        const errorText = await response.text();
+                        errorMessage = `${errorMessage}: ${errorText.slice(0, 200)}`;
+                        console.error('Server text response:', errorText);
+                    } catch (e2) {
+                        errorMessage = `${errorMessage}: ${response.statusText}`;
+                    }
                 }
+                
                 throw new Error(errorMessage);
             }
 
