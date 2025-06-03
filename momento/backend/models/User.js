@@ -400,13 +400,38 @@ const userSchema = new mongoose.Schema({
     timestamps: true, // Automatically adds createdAt and updatedAt
     toJSON: {
         transform: function(doc, ret) {
-            // Remove sensitive fields when converting to JSON
+            // Safely remove sensitive fields when converting to JSON
             delete ret.password;
-            delete ret.security.twoFactorSecret;
-            delete ret.account.emailVerificationToken;
-            delete ret.account.phoneVerificationCode;
-            delete ret.account.passwordResetToken;
-            delete ret.account.backupCodes;
+            
+            // Safely handle nested objects to prevent null/undefined errors
+            // Note: typeof null === 'object' returns true, so we need explicit null checks
+            if (ret.security && typeof ret.security === 'object' && ret.security !== null) {
+                delete ret.security.twoFactorSecret;
+            }
+            
+            if (ret.account && typeof ret.account === 'object' && ret.account !== null) {
+                delete ret.account.emailVerificationToken;
+                delete ret.account.phoneVerificationCode;
+                delete ret.account.passwordResetToken;
+                delete ret.account.backupCodes;
+            }
+            
+            // Safely handle other potentially null nested objects
+            if (ret.profile && typeof ret.profile === 'object' && ret.profile !== null) {
+                // Profile is valid, no special handling needed
+                // But we ensure it exists to prevent future errors
+            }
+            
+            if (ret.activity && typeof ret.activity === 'object' && ret.activity !== null) {
+                // Activity is valid, no special handling needed
+            }
+            
+            if (ret.preferences && typeof ret.preferences === 'object' && ret.preferences !== null) {
+                // Preferences is valid, no special handling needed
+            }
+            
+            // Remove version field
+            delete ret.__v;
             return ret;
         }
     }

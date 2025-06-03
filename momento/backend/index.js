@@ -1,3 +1,4 @@
+// backend/index.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -6,12 +7,30 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const socketIo = require('socket.io');
 require('dotenv').config();
 
 const User = require('./models/User');
+const Message = require('./models/Message');
+const Chat = require('./models/Chats');
 
 const app = express();
-app.use(cors());
+const server = http.createServer(app);
+
+// Configure Socket.IO with CORS
+const io = socketIo(server, {
+    cors: {
+        origin: "http://localhost:3000", // Frontend URL
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true
+}));
 app.use(express.json());
 
 // JWT Secret
@@ -56,14 +75,352 @@ const avatarFileFilter = (req, file, cb) => {
 
 const avatarUpload = multer({
     storage: avatarStorage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    },
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: avatarFileFilter
 });
 
 // Static file serving for uploaded avatars
 app.use('/uploads', express.static('uploads'));
+
+// Store active users and their socket connections
+const activeUsers = new Map();
+
+// Store recent messages to prevent duplicates (in production, use Redis)
+const recentMessages = new Map();
+
+// Clean up old entries every 5 minutes
+setInterval(() => {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    for (const [key, timestamp] of recentMessages.entries()) {
+        if (timestamp < fiveMinutesAgo) {
+            recentMessages.delete(key);
+        }
+    }
+}, 5 * 60 * 1000);
+
+// Helper function to validate ObjectId
+const isValidObjectId = (id) => {
+    return id && id !== 'undefined' && id !== 'null' && mongoose.Types.ObjectId.isValid(id);
+};
+
+// Helper function to standardize chat object with consistent ID fields
+const standardizeChatObject = (chat) => {
+    if (!chat) return null;
+    const chatObj = chat.toObject ? chat.toObject() : chat;
+    return {
+        ...chatObj,
+        id: chatObj._id.toString(), // Ensure frontend gets consistent 'id' field
+        _id: chatObj._id.toString()
+    };
+};
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    // Handle user authentication and joining
+    socket.on('authenticate', async (token) => {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const user = await User.findById(decoded.userId).select('-password');
+            
+            if (user) {
+                socket.userId = user._id.toString();
+                socket.username = user.username;
+                
+                // Add user to active users map
+                activeUsers.set(user._id.toString(), {
+                    socketId: socket.id,
+                    username: user.username,
+                    lastSeen: new Date()
+                });
+
+                // Update user online status
+                await User.findByIdAndUpdate(user._id, {
+                    'activity.isOnline': true,
+                    'activity.lastActiveAt': new Date()
+                });
+
+                // Join user's personal room
+                socket.join(`user_${user._id}`);
+                
+                // Get user's chats and join chat rooms
+                const userChats = await Chat.find({ participants: user._id });
+                userChats.forEach(chat => {
+                    socket.join(`chat_${chat._id}`);
+                });
+
+                // Notify other users that this user is online
+                socket.broadcast.emit('user_online', {
+                    userId: user._id,
+                    username: user.username
+                });
+
+                socket.emit('authenticated', { 
+                    success: true, 
+                    user: {
+                        id: user._id,
+                        username: user.username,
+                        profile: user.profile
+                    }
+                });
+
+                console.log(`User ${user.username} authenticated and joined`);
+            }
+        } catch (error) {
+            console.error('Authentication error:', error);
+            socket.emit('authentication_error', { message: 'Invalid token' });
+        }
+    });
+
+    // Handle joining specific chat rooms
+    socket.on('join_chat', async (chatId) => {
+        try {
+            console.log(`=== JOIN CHAT DEBUG ===`);
+            console.log(`User: ${socket.username}, ChatId: ${chatId}`);
+            console.log(`ChatId type: ${typeof chatId}`);
+            console.log(`Is valid ObjectId: ${isValidObjectId(chatId)}`);
+            
+            // Validate chatId
+            if (!isValidObjectId(chatId)) {
+                console.error(`Invalid chatId for join_chat: ${chatId}`);
+                socket.emit('error', { message: 'Invalid chat ID' });
+                return;
+            }
+
+            // Verify user is participant of this chat
+            const chat = await Chat.findById(chatId);
+            if (chat && chat.participants.includes(socket.userId)) {
+                socket.join(`chat_${chatId}`);
+                console.log(`User ${socket.username} joined chat ${chatId}`);
+            } else {
+                console.error(`User ${socket.username} not authorized for chat ${chatId}`);
+                socket.emit('error', { message: 'Access denied to chat' });
+            }
+        } catch (error) {
+            console.error('Join chat error:', error);
+            socket.emit('error', { message: 'Failed to join chat' });
+        }
+    });
+
+    // Handle leaving chat rooms
+    socket.on('leave_chat', (chatId) => {
+        try {
+            if (isValidObjectId(chatId)) {
+                socket.leave(`chat_${chatId}`);
+                console.log(`User ${socket.username} left chat ${chatId}`);
+            }
+        } catch (error) {
+            console.error('Leave chat error:', error);
+        }
+    });
+
+    // Enhanced send message handler with duplication prevention
+    socket.on('send_message', async (data) => {
+        try {
+            console.log(`=== SEND MESSAGE DEBUG ===`);
+            console.log(`User: ${socket.username}`);
+            console.log(`Raw data:`, data);
+            console.log(`ChatId: ${data.chatId}, Type: ${typeof data.chatId}`);
+            console.log(`Content: ${data.content}`);
+            
+            const { chatId, content, messageType = 'text' } = data;
+            
+            if (!socket.userId) {
+                socket.emit('error', { message: 'Not authenticated' });
+                return;
+            }
+
+            // Validate chatId
+            if (!isValidObjectId(chatId)) {
+                console.error(`Invalid chatId for send_message: ${chatId}`);
+                socket.emit('error', { message: 'Invalid chat ID' });
+                return;
+            }
+
+            // Validate content
+            if (!content || !content.trim()) {
+                socket.emit('error', { message: 'Message content is required' });
+                return;
+            }
+
+            // Create message fingerprint to prevent duplicates
+            const recentFingerprint = `${socket.userId}-${chatId}-${content.trim()}`;
+            
+            // Check for recent duplicate (within last 2 seconds)
+            const now = Date.now();
+            const lastMessageTime = recentMessages.get(recentFingerprint);
+            if (lastMessageTime && (now - lastMessageTime) < 2000) {
+                console.log('Duplicate message detected, ignoring');
+                return;
+            }
+            
+            // Store this message timestamp
+            recentMessages.set(recentFingerprint, now);
+
+            // Verify chat exists and user is participant
+            const chat = await Chat.findById(chatId);
+            if (!chat) {
+                socket.emit('error', { message: 'Chat not found' });
+                return;
+            }
+
+            if (!chat.participants.includes(socket.userId)) {
+                socket.emit('error', { message: 'Access denied to chat' });
+                return;
+            }
+
+            // Create new message
+            const message = new Message({
+                chat: chatId,
+                sender: socket.userId,
+                content: content.trim(),
+                messageType,
+                timestamp: new Date(),
+                readBy: [{ user: socket.userId, readAt: new Date() }]
+            });
+
+            await message.save();
+            
+            // Populate sender information
+            await message.populate('sender', 'username profile.profilePicture');
+            
+            // Update chat's last message
+            await Chat.findByIdAndUpdate(chatId, {
+                lastMessage: message._id,
+                lastActivity: new Date()
+            });
+
+            // Emit message to all users in the chat room
+            const messageData = {
+                _id: message._id,
+                content: message.content,
+                messageType: message.messageType,
+                timestamp: message.timestamp,
+                sender: {
+                    _id: message.sender._id,
+                    username: message.sender.username,
+                    profilePicture: message.sender.profile?.profilePicture
+                },
+                readBy: message.readBy,
+                chatId: chatId
+            };
+
+            // Emit to the chat room
+            io.to(`chat_${chatId}`).emit('new_message', messageData);
+
+            console.log(`Message sent in chat ${chatId} by ${socket.username}`);
+            console.log(`Message fingerprint: ${recentFingerprint}`);
+            console.log(`=========================`);
+        } catch (error) {
+            console.error('Send message error:', error);
+            socket.emit('error', { message: 'Failed to send message' });
+        }
+    });
+
+    // Handle message read status
+    socket.on('mark_message_read', async (data) => {
+        try {
+            const { messageId, chatId } = data;
+            
+            if (!socket.userId || !isValidObjectId(messageId) || !isValidObjectId(chatId)) {
+                return;
+            }
+
+            await Message.findByIdAndUpdate(messageId, {
+                $addToSet: {
+                    readBy: {
+                        user: socket.userId,
+                        readAt: new Date()
+                    }
+                }
+            });
+
+            // Notify other users in the chat that message was read
+            socket.to(`chat_${chatId}`).emit('message_read', {
+                messageId,
+                userId: socket.userId,
+                username: socket.username
+            });
+        } catch (error) {
+            console.error('Mark message read error:', error);
+        }
+    });
+
+    // Handle typing indicators
+    socket.on('typing_start', (data) => {
+        try {
+            const { chatId } = data;
+            if (isValidObjectId(chatId)) {
+                socket.to(`chat_${chatId}`).emit('user_typing', {
+                    userId: socket.userId,
+                    username: socket.username,
+                    chatId
+                });
+            }
+        } catch (error) {
+            console.error('Typing start error:', error);
+        }
+    });
+
+    socket.on('typing_stop', (data) => {
+        try {
+            const { chatId } = data;
+            if (isValidObjectId(chatId)) {
+                socket.to(`chat_${chatId}`).emit('user_stopped_typing', {
+                    userId: socket.userId,
+                    username: socket.username,
+                    chatId
+                });
+            }
+        } catch (error) {
+            console.error('Typing stop error:', error);
+        }
+    });
+
+    // Handle user disconnection
+    socket.on('disconnect', async () => {
+        console.log('User disconnected:', socket.id);
+        
+        if (socket.userId) {
+            // Remove from active users
+            activeUsers.delete(socket.userId);
+            
+            // Update user offline status
+            await User.findByIdAndUpdate(socket.userId, {
+                'activity.isOnline': false,
+                'activity.lastActiveAt': new Date()
+            });
+
+            // Notify other users that this user went offline
+            socket.broadcast.emit('user_offline', {
+                userId: socket.userId,
+                username: socket.username
+            });
+        }
+    });
+});
+
+// Token authentication middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Access token required' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            if (err.name === 'TokenExpiredError') {
+                return res.status(401).json({ message: 'Token expired' });
+            }
+            return res.status(403).json({ message: 'Invalid token' });
+        }
+        req.user = decoded;
+        next();
+    });
+};
 
 // Test API endpoint
 app.get('/api/TestDB', (req, res) => {
@@ -236,26 +593,132 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Token authentication middleware
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+// Chat endpoints
 
-    if (!token) {
-        return res.status(401).json({ message: 'Access token required' });
+// Get user's chats
+app.get('/api/chats', authenticateToken, async (req, res) => {
+    try {
+        const chats = await Chat.find({ participants: req.user.userId })
+            .populate('participants', 'username profile.profilePicture activity.isOnline activity.lastActiveAt')
+            .populate('lastMessage')
+            .sort({ lastActivity: -1 });
+
+        const chatsWithUnread = await Promise.all(chats.map(async (chat) => {
+            const unreadCount = await Message.countDocuments({
+                chat: chat._id,
+                'readBy.user': { $ne: req.user.userId },
+                isDeleted: false
+            });
+
+            // Standardize chat object with consistent ID fields
+            return {
+                ...standardizeChatObject(chat),
+                unreadCount
+            };
+        }));
+
+        console.log(`Fetched ${chatsWithUnread.length} chats for user ${req.user.userId}`);
+        res.json(chatsWithUnread);
+    } catch (error) {
+        console.error('Get chats error:', error);
+        res.status(500).json({ message: 'Failed to fetch chats' });
     }
+});
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            if (err.name === 'TokenExpiredError') {
-                return res.status(401).json({ message: 'Token expired' });
-            }
-            return res.status(403).json({ message: 'Invalid token' });
+// Create or get existing chat
+app.post('/api/chats', authenticateToken, async (req, res) => {
+    try {
+        const { participantId } = req.body;
+        const currentUserId = req.user.userId;
+
+        console.log(`Creating chat: ${currentUserId} -> ${participantId}`);
+
+        // Validate participant ID
+        if (!participantId || participantId === currentUserId) {
+            return res.status(400).json({ message: 'Invalid participant ID' });
         }
-        req.user = decoded;
-        next();
-    });
-};
+
+        if (!isValidObjectId(participantId)) {
+            return res.status(400).json({ message: 'Invalid participant ID format' });
+        }
+
+        // Check if participant user exists
+        const participantUser = await User.findById(participantId);
+        if (!participantUser) {
+            return res.status(404).json({ message: 'Participant user not found' });
+        }
+
+        // Check if chat already exists between these users
+        let chat = await Chat.findOne({
+            type: 'direct',
+            participants: { $all: [currentUserId, participantId], $size: 2 }
+        }).populate('participants', 'username profile.profilePicture activity.isOnline');
+
+        if (!chat) {
+            // Create new chat
+            chat = new Chat({
+                type: 'direct',
+                participants: [currentUserId, participantId],
+                createdBy: currentUserId,
+                participantSettings: [
+                    { user: currentUserId, joinedAt: new Date(), lastSeenAt: new Date() },
+                    { user: participantId, joinedAt: new Date(), lastSeenAt: new Date() }
+                ]
+            });
+            await chat.save();
+            await chat.populate('participants', 'username profile.profilePicture activity.isOnline');
+            console.log(`Created new chat: ${chat._id}`);
+        } else {
+            console.log(`Found existing chat: ${chat._id}`);
+        }
+
+        // Return standardized chat object
+        res.json(standardizeChatObject(chat));
+    } catch (error) {
+        console.error('Create chat error:', error);
+        res.status(500).json({ message: 'Failed to create chat' });
+    }
+});
+
+// Get messages for a specific chat
+app.get('/api/chats/:chatId/messages', authenticateToken, async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { page = 1, limit = 50 } = req.query;
+        
+        console.log(`Fetching messages for chat: ${chatId}, user: ${req.user.userId}`);
+        
+        // Validate chatId
+        if (!isValidObjectId(chatId)) {
+            return res.status(400).json({ message: 'Invalid chat ID format' });
+        }
+        
+        // Verify user is participant of this chat
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
+        }
+
+        if (!chat.participants.includes(req.user.userId)) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const messages = await Message.find({ 
+            chat: chatId, 
+            isDeleted: false 
+        })
+            .populate('sender', 'username profile.profilePicture')
+            .sort({ timestamp: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        console.log(`Found ${messages.length} messages for chat ${chatId}`);
+        res.json(messages.reverse());
+    } catch (error) {
+        console.error('Get messages error:', error);
+        res.status(500).json({ message: 'Failed to fetch messages' });
+    }
+});
 
 // Get current user information
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
@@ -283,14 +746,58 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     }
 });
 
-// Get all users
-app.get('/api/users', async (req, res) => {
+// Get all users (for creating new chats)
+app.get('/api/users', authenticateToken, async (req, res) => {
     try {
-        const users = await User.find().select('-password');
-        res.json(users);
+        const { search, limit = 20 } = req.query;
+        
+        console.log('Fetching users for user ID:', req.user.userId);
+        console.log('Search query:', search);
+        
+        // Build query - exclude current user and only active accounts
+        let query = { 
+            _id: { $ne: req.user.userId },
+            'account.status': 'active'
+        };
+        
+        // Add search functionality
+        if (search && search.trim()) {
+            query.$or = [
+                { username: new RegExp(search.trim(), 'i') },
+                { 'profile.displayName': new RegExp(search.trim(), 'i') }
+            ];
+        }
+
+        // Fetch users with essential fields
+        const users = await User.find(query)
+            .select('username profile.profilePicture profile.displayName activity.isOnline activity.lastActiveAt')
+            .limit(parseInt(limit))
+            .sort({ 'activity.lastActiveAt': -1 }); // Recently active first
+        
+        console.log(`Found ${users.length} users`);
+        
+        // Transform response to include computed fields
+        const transformedUsers = users.map(user => ({
+            _id: user._id,
+            username: user.username,
+            profile: {
+                profilePicture: user.profile?.profilePicture || { url: null },
+                displayName: user.profile?.displayName || user.username
+            },
+            activity: {
+                isOnline: user.activity?.isOnline || false,
+                lastActiveAt: user.activity?.lastActiveAt
+            }
+        }));
+        
+        res.json(transformedUsers);
+        
     } catch (err) {
         console.error('Get users error:', err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ 
+            message: 'Failed to fetch users',
+            error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
     }
 });
 
@@ -332,7 +839,6 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
         const { username, profile } = req.body;
         const userId = req.user.userId;
 
-        // Check if the username is taken (frontend cannot verify this)
         if (username) {
             const existingUser = await User.findOne({ 
                 username, 
@@ -403,7 +909,7 @@ app.post('/api/users/avatar', authenticateToken, avatarUpload.single('avatar'), 
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Delete old avatar file (if exists)
+        // Remove old avatar file if exists
         if (user.profile && user.profile.profilePicture && user.profile.profilePicture.filename) {
             const oldAvatarPath = path.join(uploadDir, user.profile.profilePicture.filename);
             if (fs.existsSync(oldAvatarPath)) {
@@ -447,7 +953,7 @@ app.post('/api/users/avatar', authenticateToken, avatarUpload.single('avatar'), 
     } catch (error) {
         console.error('Avatar upload error:', error);
         
-        // Delete uploaded file if there's an error
+        // Clean up uploaded file on error
         if (req.file) {
             const filePath = path.join(uploadDir, req.file.filename);
             if (fs.existsSync(filePath)) {
@@ -468,164 +974,38 @@ app.post('/api/users/avatar', authenticateToken, avatarUpload.single('avatar'), 
     }
 });
 
-// Change password endpoint
-app.put('/api/users/password', authenticateToken, async (req, res) => {
+// Debug endpoint to test user fetching
+app.get('/api/debug/users', authenticateToken, async (req, res) => {
     try {
-        const { currentPassword, newPassword } = req.body;
-        const userId = req.user.userId;
-
-        // Validate input
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ 
-                message: 'Current password and new password are required' 
-            });
-        }
-
-        if (newPassword.length < 6) {
-            return res.status(400).json({ 
-                message: 'New password must be at least 6 characters long' 
-            });
-        }
-
-        // Get user
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Verify current password
-        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
-        if (!isCurrentPasswordValid) {
-            return res.status(400).json({ 
-                message: 'Current password is incorrect' 
-            });
-        }
-
-        // Hash new password
-        const saltRounds = 12;
-        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-
-        // Update password
-        await User.findByIdAndUpdate(userId, { password: hashedNewPassword });
-
+        const totalUsers = await User.countDocuments();
+        const activeUsers = await User.countDocuments({ 'account.status': 'active' });
+        const usersExcludingCurrent = await User.countDocuments({ 
+            _id: { $ne: req.user.userId },
+            'account.status': 'active'
+        });
+        
+        const sampleUsers = await User.find({ 
+            _id: { $ne: req.user.userId },
+            'account.status': 'active'
+        })
+        .select('username profile.displayName')
+        .limit(5);
+        
         res.json({
-            message: 'Password updated successfully'
+            debug: {
+                currentUserId: req.user.userId,
+                totalUsers,
+                activeUsers,
+                usersExcludingCurrent,
+                sampleUsers: sampleUsers.map(u => ({
+                    id: u._id,
+                    username: u.username,
+                    displayName: u.profile?.displayName
+                }))
+            }
         });
-
-    } catch (error) {
-        console.error('Change password error:', error);
-        res.status(500).json({ 
-            message: 'Failed to change password',
-            error: error.message 
-        });
-    }
-});
-
-// Check follow status endpoint
-app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const currentUserId = req.user.userId;
-
-        if (currentUserId === userId) {
-            return res.json({ isFollowing: false }); // Cannot follow yourself
-        }
-
-        const currentUser = await User.findById(currentUserId);
-        if (!currentUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const isFollowing = currentUser.relationships.following.some(
-            follow => follow.user.toString() === userId
-        );
-
-        res.json({ isFollowing });
-
-    } catch (error) {
-        console.error('Check follow status error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// Follow user endpoint
-app.post('/api/users/:userId/follow', authenticateToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const currentUserId = req.user.userId;
-
-        if (currentUserId === userId) {
-            return res.status(400).json({ message: 'Cannot follow yourself' });
-        }
-
-        const [currentUser, targetUser] = await Promise.all([
-            User.findById(currentUserId),
-            User.findById(userId)
-        ]);
-
-        if (!currentUser || !targetUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Check if already following
-        const alreadyFollowing = currentUser.relationships.following.some(
-            follow => follow.user.toString() === userId
-        );
-
-        if (alreadyFollowing) {
-            return res.status(400).json({ message: 'Already following this user' });
-        }
-
-        // Add follow relationship
-        currentUser.relationships.following.push({ user: userId });
-        currentUser.stats.followingCount += 1;
-
-        targetUser.relationships.followers.push({ user: currentUserId });
-        targetUser.stats.followersCount += 1;
-
-        await Promise.all([currentUser.save(), targetUser.save()]);
-
-        res.json({ message: 'Successfully followed user' });
-
-    } catch (error) {
-        console.error('Follow user error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// Unfollow user endpoint
-app.post('/api/users/:userId/unfollow', authenticateToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const currentUserId = req.user.userId;
-
-        const [currentUser, targetUser] = await Promise.all([
-            User.findById(currentUserId),
-            User.findById(userId)
-        ]);
-
-        if (!currentUser || !targetUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Remove follow relationship
-        currentUser.relationships.following = currentUser.relationships.following.filter(
-            follow => follow.user.toString() !== userId
-        );
-        currentUser.stats.followingCount = Math.max(0, currentUser.stats.followingCount - 1);
-
-        targetUser.relationships.followers = targetUser.relationships.followers.filter(
-            follower => follower.user.toString() !== currentUserId
-        );
-        targetUser.stats.followersCount = Math.max(0, targetUser.stats.followersCount - 1);
-
-        await Promise.all([currentUser.save(), targetUser.save()]);
-
-        res.json({ message: 'Successfully unfollowed user' });
-
-    } catch (error) {
-        console.error('Unfollow user error:', error);
-        res.status(500).json({ message: 'Server error' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -636,18 +1016,15 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+    console.log('Socket.IO server initialized');
     console.log('Available endpoints:');
     console.log('- POST /api/users (register)');
     console.log('- POST /api/auth/login (login)');
     console.log('- GET /api/auth/me (get current user)');
     console.log('- GET /api/users (get all users)');
-    console.log('- GET /api/users/profile/:username (get user profile)');
-    console.log('- PUT /api/users/profile (update profile)');
-    console.log('- POST /api/users/avatar (upload avatar)');
-    console.log('- PUT /api/users/password (change password)');
-    console.log('- GET /api/users/:userId/follow-status (check follow status)');
-    console.log('- POST /api/users/:userId/follow (follow user)');
-    console.log('- POST /api/users/:userId/unfollow (unfollow user)');
+    console.log('- GET /api/chats (get user chats)');
+    console.log('- POST /api/chats (create chat)');
+    console.log('- GET /api/chats/:chatId/messages (get messages)');
 });
