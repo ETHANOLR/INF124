@@ -437,6 +437,23 @@ const Settings = () => {
      */
     const updateProfileData = async () => {
         try {
+            // First, get the latest user data to ensure we have current profilePicture
+            let currentProfilePicture = null;
+            try {
+                const currentUserResponse = await axios.get(
+                    `${process.env.REACT_APP_API_BASE_URL}/api/auth/me`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${authToken}`
+                        }
+                    }
+                );
+                currentProfilePicture = currentUserResponse.data.profile?.profilePicture || null;
+            } catch (fetchError) {
+                console.warn('Could not fetch current user data, using context data:', fetchError);
+                currentProfilePicture = currentUser?.profile?.profilePicture || null;
+            }
+
             const updateData = {
                 username: formData.username,
                 profile: {
@@ -446,7 +463,9 @@ const Settings = () => {
                     bio: formData.bio,
                     location: formData.location,
                     website: formData.website,
-                    phoneNumber: formData.phoneNumber
+                    phoneNumber: formData.phoneNumber,
+                    // Preserve existing profilePicture
+                    profilePicture: currentProfilePicture
                 }
             };
 

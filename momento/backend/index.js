@@ -839,6 +839,7 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
         const { username, profile } = req.body;
         const userId = req.user.userId;
 
+        // Check if username is being changed and if it's already taken
         if (username) {
             const existingUser = await User.findOne({ 
                 username, 
@@ -852,16 +853,35 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
             }
         }
 
-        // Prepare update data
-        const updateData = { username };
-        if (profile) {
-            updateData.profile = profile;
+        // Prepare update data using $set to preserve existing fields
+        const updateData = {};
+        
+        // Update username if provided
+        if (username) {
+            updateData.username = username;
         }
 
-        // Update user data
+        // Update profile fields selectively to preserve existing data like profilePicture
+        if (profile) {
+            // Only update the specific profile fields that are provided
+            if (profile.firstName !== undefined) updateData['profile.firstName'] = profile.firstName;
+            if (profile.lastName !== undefined) updateData['profile.lastName'] = profile.lastName;
+            if (profile.displayName !== undefined) updateData['profile.displayName'] = profile.displayName;
+            if (profile.bio !== undefined) updateData['profile.bio'] = profile.bio;
+            if (profile.location !== undefined) updateData['profile.location'] = profile.location;
+            if (profile.website !== undefined) updateData['profile.website'] = profile.website;
+            if (profile.phoneNumber !== undefined) updateData['profile.phoneNumber'] = profile.phoneNumber;
+            
+            // Only update profilePicture if it's explicitly provided (for avatar uploads)
+            if (profile.profilePicture !== undefined) {
+                updateData['profile.profilePicture'] = profile.profilePicture;
+            }
+        }
+
+        // Update user data using $set to preserve existing fields
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            updateData,
+            { $set: updateData },
             { new: true, runValidators: true }
         ).select('-password');
 
@@ -974,6 +994,61 @@ app.post('/api/users/avatar', authenticateToken, avatarUpload.single('avatar'), 
     }
 });
 
+// Password change endpoint - Added to handle password updates properly
+app.put('/api/users/password', authenticateToken, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.userId;
+
+        // Validate input
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ 
+                message: 'Current password and new password are required' 
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ 
+                message: 'New password must be at least 6 characters long' 
+            });
+        }
+
+        // Find user with password field
+        const user = await User.findById(userId).select('+password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify current password
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isCurrentPasswordValid) {
+            return res.status(400).json({ 
+                message: 'Current password is incorrect' 
+            });
+        }
+
+        // Hash new password
+        const saltRounds = 12;
+        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update password
+        await User.findByIdAndUpdate(userId, {
+            password: hashedNewPassword
+        });
+
+        res.json({
+            message: 'Password updated successfully'
+        });
+
+    } catch (error) {
+        console.error('Password change error:', error);
+        res.status(500).json({ 
+            message: 'Failed to change password',
+            error: error.message 
+        });
+    }
+});
+
 // Debug endpoint to test user fetching
 app.get('/api/debug/users', authenticateToken, async (req, res) => {
     try {
@@ -1024,6 +1099,9 @@ server.listen(PORT, () => {
     console.log('- POST /api/auth/login (login)');
     console.log('- GET /api/auth/me (get current user)');
     console.log('- GET /api/users (get all users)');
+    console.log('- PUT /api/users/profile (update profile)');
+    console.log('- POST /api/users/avatar (upload avatar)');
+    console.log('- PUT /api/users/password (change password)');
     console.log('- GET /api/chats (get user chats)');
     console.log('- POST /api/chats (create chat)');
     console.log('- GET /api/chats/:chatId/messages (get messages)');
