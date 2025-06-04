@@ -113,9 +113,19 @@ const Chat = () => {
         try {
             console.log('Initializing socket connection...');
             
-            socketRef.current = io('http://localhost:4000', {
+            // Use environment variable for socket URL, fallback to localhost for development
+            const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:4000';
+            console.log('Connecting to socket server:', SOCKET_URL);
+            
+            socketRef.current = io(SOCKET_URL, {
                 transports: ['websocket'],
                 timeout: 20000,
+                // Add these options for better compatibility
+                forceNew: true,
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5,
+                maxReconnectionAttempts: 5
             });
 
             const socket = socketRef.current;
@@ -139,12 +149,12 @@ const Chat = () => {
 
             socket.on('connect_error', (error) => {
                 console.error('Socket connection error:', error);
-                setConnectionError('Failed to connect to chat server');
+                setConnectionError(`Failed to connect to chat server: ${error.message}`);
                 setIsConnected(false);
                 updateSocketStatus(false);
             });
 
-            // Authentication handlers
+            // Rest of the socket event handlers remain the same...
             socket.on('authenticated', (data) => {
                 console.log('Socket authenticated successfully:', data);
                 setConnectionError(null);
