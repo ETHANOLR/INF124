@@ -1,3 +1,6 @@
+// frontend/src/pages/Home.js
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
@@ -7,6 +10,118 @@ import PostCard from '../components/PostCard/PostCard';
 import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
 
 /**
+ * API service for making HTTP requests to the backend
+ */
+const apiService = {
+    async fetchPosts({ page = 1, limit = 10, category, sort = 'newest', search }) {
+        try {
+            const queryParams = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString(),
+                sort
+            });
+
+            // Add optional parameters if they exist
+            if (category && category !== 'all') {
+                queryParams.append('category', category);
+            }
+            if (search) {
+                queryParams.append('search', search);
+            }
+
+            const response = await fetch(`/api/posts?${queryParams}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching posts:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Like or unlike a post
+     */
+    async toggleLike(postId) {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/posts/${postId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error toggling like:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Add a comment to a post
+     */
+    async addComment(postId, content) {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/posts/${postId}/comment`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Share a post
+     */
+    async sharePost(postId, shareType = 'repost') {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/posts/${postId}/share`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ shareType })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error sharing post:', error);
+            throw error;
+        }
+    }
+};
+
+/**
  * Home Page
  * 
  * Main landing page that displays a feed of posts based on user preferences.
@@ -14,128 +129,186 @@ import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
  * Features a sidebar with navigation tabs and category filters.
  * Includes a grid-based post layout with interaction buttons.
  * Has a floating action button for creating new posts.
- * TODO: Can infinity see the posts.
  */
 const Home = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('For You');
-    const [activeCategory, setActiveCategory] = useState(null);
     
-    // State for infinite scrolling
+    // UI state for tabs and filters
+    const [activeTab, setActiveTab] = useState('For You');
+    const [activeCategory, setActiveCategory] = useState('all');
+    
+    // Data state for posts and pagination
     const [posts, setPosts] = useState([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
-    
+    const [error, setError] = useState(null);
+
     /**
-     * Generate sample post data for demonstration purposes
-     * In a real application, this would be replaced with API calls
-     * 
-     * @param {number} pageNumber - Page number to fetch
-     * @param {number} limit - Number of posts per page
-     * @returns {Array} Array of post objects
+     * Map tab names to API sort parameters
      */
-    const generatePosts = (pageNumber, limit = 6) => {
-        // Simulate API response time
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // Create an array of posts for the current page
-                const newPosts = Array.from({ length: limit }, (_, i) => {
-                    const postId = (pageNumber - 1) * limit + i + 1;
-                    
-                    // Limit total posts to 30 for demonstration
-                    if (postId > 30) {
-                        return null;
-                    }
-                    
-                    return {
-                        id: postId,
-                        title: `Post Title ${postId}`,
-                        details: `This is the description for post number ${postId}. It contains some details about the post.`,
-                        username: `User${Math.floor(Math.random() * 10) + 1}`,
-                        thumbnail: null, // In a real app, this would be an image URL
-                    };
-                }).filter(Boolean); // Remove null entries (when postId > 30)
-                
-                resolve({
-                    posts: newPosts,
-                    hasMore: newPosts.length === limit && (pageNumber * limit) < 30
-                });
-            }, 800); // Simulate network delay
-        });
+    const getTabSortMethod = (tab) => {
+        switch (tab) {
+            case 'For You':
+                return 'newest';
+            case 'Following':
+                return 'newest'; // Could be modified to filter by followed users
+            case 'Trending':
+                return 'trending';
+            default:
+                return 'newest';
+        }
     };
-    
+
     /**
-     * Load initial posts when the component mounts
-     * or when activeTab or activeCategory changes
+     * Load posts from the API
      */
-    useEffect(() => {
-        const loadInitialPosts = async () => {
-            setIsLoading(true);
-            const result = await generatePosts(1);
-            setPosts(result.posts);
-            setHasMore(result.hasMore);
-            setPage(1);
-            setIsLoading(false);
-        };
-        
-        loadInitialPosts();
-    }, [activeTab, activeCategory]);
-    
-    /**
-     * Load more posts when the user scrolls to the bottom
-     * This function is memoized with useCallback to prevent
-     * unnecessary re-renders of the InfiniteScroll component
-     */
-    const loadMorePosts = useCallback(async () => {
+    const loadPosts = useCallback(async (pageNumber = 1, reset = false) => {
         if (isLoading) return;
         
         setIsLoading(true);
-        const nextPage = page + 1;
+        setError(null);
         
         try {
-            const result = await generatePosts(nextPage);
+            const response = await apiService.fetchPosts({
+                page: pageNumber,
+                limit: 10,
+                category: activeCategory === 'all' ? null : activeCategory,
+                sort: getTabSortMethod(activeTab)
+            });
+
+            const { posts: newPosts, pagination } = response;
             
-            setPosts(prevPosts => [...prevPosts, ...result.posts]);
-            setHasMore(result.hasMore);
-            setPage(nextPage);
+            if (reset) {
+                setPosts(newPosts);
+            } else {
+                setPosts(prevPosts => [...prevPosts, ...newPosts]);
+            }
+            
+            setHasMore(pagination.hasNextPage);
+            setPage(pageNumber);
+            
         } catch (error) {
-            console.error('Error loading more posts:', error);
+            console.error('Error loading posts:', error);
+            setError('Failed to load posts. Please try again.');
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading, page]);
-    
+    }, [activeTab, activeCategory, isLoading]);
+
     /**
-     * Handlers for user interactions
+     * Load initial posts when component mounts or filters change
+     */
+    useEffect(() => {
+        loadPosts(1, true); // Reset posts and load first page
+    }, [activeTab, activeCategory]);
+
+    /**
+     * Load more posts for infinite scrolling
+     */
+    const loadMorePosts = useCallback(async () => {
+        if (hasMore && !isLoading) {
+            await loadPosts(page + 1, false);
+        }
+    }, [hasMore, isLoading, page, loadPosts]);
+
+    /**
+     * Handle tab selection
      */
     const handleTabClick = (tab) => {
         setActiveTab(tab);
+        setPage(1);
+        setError(null);
     };
-    
+
+    /**
+     * Handle category selection
+     */
     const handleCategoryClick = (category) => {
         setActiveCategory(category);
+        setPage(1);
+        setError(null);
     };
-    
-    const handleLike = (postId) => {
-        console.log(`Liked post ${postId}`);
-        // In the future, we would call an API to like the post
+
+    /**
+     * Handle like button click
+     */
+    const handleLike = async (postId) => {
+        try {
+            const result = await apiService.toggleLike(postId);
+            
+            // Update the specific post in the state
+            setPosts(prevPosts => 
+                prevPosts.map(post => 
+                    post._id === postId 
+                        ? { 
+                            ...post, 
+                            likesCount: result.likesCount,
+                            isLikedByUser: result.liked 
+                          }
+                        : post
+                )
+            );
+            
+        } catch (error) {
+            console.error('Error liking post:', error);
+            // You could show a toast notification here
+        }
     };
-    
+
+    /**
+     * Handle comment button click
+     */
     const handleComment = (postId) => {
-        console.log(`Comment on post ${postId}`);
-        // In the future, we will make this might open a comment modal or navigate to a comments page
+        // Navigate to post detail page where comments can be added
+        navigate(`/posts/${postId}`);
     };
-    
-    const handleShare = (postId) => {
-        console.log(`Share post ${postId}`);
-        // In the future, we will let this to open a share dialog
+
+    /**
+     * Handle share button click
+     */
+    const handleShare = async (postId) => {
+        try {
+            await apiService.sharePost(postId, 'repost');
+            
+            // Update the specific post in the state
+            setPosts(prevPosts => 
+                prevPosts.map(post => 
+                    post._id === postId 
+                        ? { ...post, sharesCount: (post.sharesCount || 0) + 1 }
+                        : post
+                )
+            );
+            
+            // You could show a success message here
+            
+        } catch (error) {
+            console.error('Error sharing post:', error);
+            // You could show an error message here
+        }
     };
-    
+
+    /**
+     * Handle create post button click
+     */
     const handleCreatePost = () => {
         navigate('/create-post');
     };
-    
+
+    /**
+     * Format date for display
+     */
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+        
+        if (diffInHours < 1) return 'Just now';
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+        return date.toLocaleDateString();
+    };
+
     return (
         <div className="home-main-container">
             {/* Navigation bar at the top */}
@@ -171,6 +344,12 @@ const Home = () => {
                     <div className="home-section">
                         <h3 className="home-section-title">Categories</h3>
                         <div 
+                            className={`category ${activeCategory === 'all' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('all')}
+                        >
+                            All
+                        </div>
+                        <div 
                             className={`category ${activeCategory === 'Fashion' ? 'active' : ''}`}
                             onClick={() => handleCategoryClick('Fashion')}
                         >
@@ -200,12 +379,35 @@ const Home = () => {
                         >
                             Lifestyle
                         </div>
+                        <div 
+                            className={`category ${activeCategory === 'Technology' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Technology')}
+                        >
+                            Technology
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Sports' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Sports')}
+                        >
+                            Sports
+                        </div>
                     </div>
                 </div>
                 
                 {/* Feed section with posts */}
                 <div className="feed">
-                    <h2 className="feed-title">{activeTab}</h2>
+                    <h2 className="feed-title">
+                        {activeTab}
+                        {activeCategory !== 'all' && ` - ${activeCategory}`}
+                    </h2>
+                    
+                    {/* Error message */}
+                    {error && (
+                        <div className="error-message">
+                            {error}
+                            <button onClick={() => loadPosts(1, true)}>Try Again</button>
+                        </div>
+                    )}
                     
                     {/* Infinite scroll container */}
                     <InfiniteScroll
@@ -213,28 +415,112 @@ const Home = () => {
                         hasMore={hasMore}
                         isLoading={isLoading}
                         loader={<div className="posts-loader">Loading more posts...</div>}
-                        endMessage={<p className="posts-end-message">You've seen all posts</p>}
+                        endMessage={<p className="posts-end-message">You've seen all posts!</p>}
                     >
                         <div className="post-grid">
                             {posts.map((post) => (
-                                <div key={post.id} className="post-item">
-                                    <div className="home-post-thumbnail"></div>
+                                <div key={post._id || post.id} className="post-item">
+                                    {/* Post thumbnail - use first image if available */}
+                                    <div className="home-post-thumbnail">
+                                        {post.media?.images?.[0]?.url ? (
+                                            <img 
+                                                src={post.media.images[0].url} 
+                                                alt={post.media.images[0].altText || post.title}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            />
+                                        ) : (
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                height: '100%',
+                                                backgroundColor: '#f0f0f0',
+                                                color: '#999'
+                                            }}>
+                                                {post.category}
+                                            </div>
+                                        )}
+                                    </div>
+                                    
                                     <div className="home-post-content">
                                         <h3 className="home-post-title">{post.title}</h3>
-                                        <p className="home-post-details">{post.details}</p>
-                                        <div className="post-user">
-                                            <div className="home-user-avatar"></div>
-                                            <span className="home-username">{post.username}</span>
+                                        <p className="home-post-details">
+                                            {post.excerpt || post.content.substring(0, 150) + '...'}
+                                        </p>
+                                        
+                                        {/* Post metadata */}
+                                        <div className="post-metadata">
+                                            <span className="post-category">{post.category}</span>
+                                            <span className="post-date">{formatDate(post.createdAt)}</span>
                                         </div>
+                                        
+                                        {/* Author information */}
+                                        <div className="post-user">
+                                            <div className="home-user-avatar">
+                                                {post.author?.profile?.profilePicture?.url ? (
+                                                    <img 
+                                                        src={post.author.profile.profilePicture.url}
+                                                        alt={post.author.username}
+                                                        style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                                                    />
+                                                ) : (
+                                                    <div style={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'center',
+                                                        height: '100%',
+                                                        backgroundColor: '#e0e0e0',
+                                                        borderRadius: '50%'
+                                                    }}>
+                                                        {post.author?.username?.[0]?.toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="home-username">
+                                                {post.author?.profile?.displayName || post.author?.username}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Post statistics */}
+                                        <div className="post-stats">
+                                            <span>{post.likesCount || 0} likes</span>
+                                            <span>{post.commentsCount || 0} comments</span>
+                                            <span>{post.analytics?.views || 0} views</span>
+                                        </div>
+                                        
+                                        {/* Action buttons */}
                                         <div className="post-actions">
-                                            <button className="action-button" onClick={() => handleLike(post.id)}>Like</button>
-                                            <button className="action-button" onClick={() => handleComment(post.id)}>Comment</button>
-                                            <button className="action-button" onClick={() => handleShare(post.id)}>Share</button>
+                                            <button 
+                                                className={`action-button ${post.isLikedByUser ? 'liked' : ''}`}
+                                                onClick={() => handleLike(post._id || post.id)}
+                                            >
+                                                {post.isLikedByUser ? '❤️' : '🤍'} Like
+                                            </button>
+                                            <button 
+                                                className="action-button" 
+                                                onClick={() => handleComment(post._id || post.id)}
+                                            >
+                                                💬 Comment
+                                            </button>
+                                            <button 
+                                                className="action-button" 
+                                                onClick={() => handleShare(post._id || post.id)}
+                                            >
+                                                📤 Share
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
+                        
+                        {/* Show message when no posts are found */}
+                        {!isLoading && posts.length === 0 && !error && (
+                            <div className="no-posts-message">
+                                <h3>No posts found</h3>
+                                <p>Try adjusting your filters or search query.</p>
+                            </div>
+                        )}
                     </InfiniteScroll>
                 </div>
             </div>
