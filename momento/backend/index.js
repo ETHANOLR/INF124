@@ -14,6 +14,7 @@ require('dotenv').config();
 const User = require('./models/User');
 const Message = require('./models/Message');
 const Chat = require('./models/Chats');
+const Post = require('./models/Post');
 
 const app = express();
 const server = http.createServer(app);
@@ -65,10 +66,14 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('Connected to MongoDB Atlas'))
 .catch(err => console.error('MongoDB connection error:', err));
 
-// Ensure upload directory exists
+// Ensure upload directories exist
 const uploadDir = './uploads/avatars';
+const postMediaDir = './uploads/posts';
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir, { recursive: true });
+}
+if (!fs.existsSync(postMediaDir)){
+    fs.mkdirSync(postMediaDir, { recursive: true });
 }
 
 // Configure multer for avatar uploads
@@ -81,6 +86,18 @@ const avatarStorage = multer.diskStorage({
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const fileExtension = path.extname(file.originalname);
         cb(null, `avatar-${req.user.userId}-${uniqueSuffix}${fileExtension}`);
+    }
+});
+
+// Configure multer for post media uploads
+const postMediaStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, postMediaDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(file.originalname);
+        cb(null, `post-${req.user.userId}-${uniqueSuffix}${fileExtension}`);
     }
 });
 
@@ -100,7 +117,13 @@ const avatarUpload = multer({
     fileFilter: avatarFileFilter
 });
 
-// Static file serving for uploaded avatars
+const postMediaUpload = multer({
+    storage: postMediaStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for post images
+    fileFilter: avatarFileFilter // Reuse same image filter
+});
+
+// Static file serving for uploaded avatars and post media
 app.use('/uploads', express.static('uploads'));
 
 // Store active users and their socket connections
@@ -614,7 +637,417 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Chat endpoints
+/**
+ * GET /api/posts
+ * Fetch posts with pagination, filtering, and sorting
+ */
+app.get('/api/posts', async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            category,
+            sort = 'newest',
+            author,
+            search
+        } = req.query;
+
+        // Build base query
+        let query = {
+            'status.published': true,
+            'status.isDeleted': false
+        };
+
+        // Add category filter
+        if (category && category !== 'all') {
+            query.category = category;
+        }
+
+        // Add author filter
+        if (author && isValidObjectId(author)) {
+            query.author = author;
+        }
+
+        // Add search functionality
+        if (search && search.trim()) {
+            query.$text = { $search: search.trim() };
+        }
+
+        // Build sort object
+        let sortObject = {};
+        switch (sort) {
+            case 'oldest':
+                sortObject = { createdAt: 1 };
+                break;
+            case 'popular':
+                sortObject = { 'analytics.views': -1, createdAt: -1 };
+                break;
+            case 'trending':
+                sortObject = { createdAt: -1 }; // Fallback to newest
+                break;
+            default: // newest
+                sortObject = { createdAt: -1 };
+        }
+
+        let posts;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        if (sort === 'trending') {
+            // Use aggregation for trending posts
+            posts = await Post.aggregate([
+                { $match: query },
+                {
+                    $addFields: {
+                        trendingScore: {
+                            $add: [
+                                { $size: { $ifNull: ['$engagement.likes', []] } },
+                                { $multiply: [{ $size: { $ifNull: ['$engagement.comments', []] } }, 2] },
+                                { $multiply: [{ $size: { $ifNull: ['$engagement.shares', []] } }, 3] },
+                                { $divide: [{ $ifNull: ['$analytics.views', 0] }, 10] }
+                            ]
+                        }
+                    }
+                },
+                { $sort: { trendingScore: -1, createdAt: -1 } },
+                { $skip: skip },
+                { $limit: limitNum },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author',
+                        pipeline: [
+                            {
+                                $project: {
+                                    username: 1,
+                                    'profile.profilePicture': 1,
+                                    'profile.displayName': 1
+                                }
+                            }
+                        ]
+                    }
+                },
+                { $unwind: '$author' }
+            ]);
+        } else {
+            // Regular query with population
+            posts = await Post.find(query)
+                .populate('author', 'username profile.profilePicture profile.displayName')
+                .sort(sortObject)
+                .skip(skip)
+                .limit(limitNum)
+                .lean();
+        }
+
+        // Get total count for pagination
+        const totalPosts = await Post.countDocuments(query);
+        const totalPages = Math.ceil(totalPosts / limitNum);
+
+        console.log(`Fetched ${posts.length} posts for page ${page}, category: ${category || 'all'}, sort: ${sort}`);
+
+        res.json({
+            posts,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalPosts,
+                hasNextPage: pageNum < totalPages,
+                hasPrevPage: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Get posts error:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch posts',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+});
+
+/**
+ * POST /api/posts
+ * Create a new post
+ */
+app.post('/api/posts', authenticateToken, async (req, res) => {
+    try {
+        const { title, content, category, tags, visibility = 'public' } = req.body;
+
+        // Validate required fields
+        if (!title || !content || !category) {
+            return res.status(400).json({ 
+                message: 'Title, content, and category are required' 
+            });
+        }
+
+        // Create new post
+        const post = new Post({
+            title: title.trim(),
+            content: content.trim(),
+            category,
+            tags: tags ? tags.filter(tag => tag.trim()) : [],
+            author: req.user.userId,
+            settings: {
+                visibility,
+                allowComments: true,
+                allowShares: true,
+                showLikesCount: true,
+                showCommentsCount: true
+            },
+            status: {
+                published: true,
+                publishedAt: new Date()
+            }
+        });
+
+        await post.save();
+        
+        // Populate author information
+        await post.populate('author', 'username profile.profilePicture profile.displayName');
+
+        // Update user's post count
+        await User.findByIdAndUpdate(req.user.userId, {
+            $inc: { 'stats.postsCount': 1 }
+        });
+
+        console.log(`New post created: ${post.title} by ${post.author.username}`);
+
+        res.status(201).json({
+            message: 'Post created successfully',
+            post: post
+        });
+
+    } catch (error) {
+        console.error('Create post error:', error);
+        res.status(400).json({ 
+            message: 'Failed to create post',
+            error: error.message 
+        });
+    }
+});
+
+/**
+ * GET /api/posts/:id
+ * Get a specific post by ID
+ */
+app.get('/api/posts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
+        const post = await Post.findById(id)
+            .populate('author', 'username profile.profilePicture profile.displayName')
+            .populate('engagement.comments.user', 'username profile.profilePicture');
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Check if post is published
+        if (!post.status.published) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Increment view count
+        post.incrementViews();
+
+        res.json(post);
+
+    } catch (error) {
+        console.error('Get post error:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch post',
+            error: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/posts/:id/like
+ * Like or unlike a post
+ */
+app.post('/api/posts/:id/like', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
+        const post = await Post.findById(id);
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        const userId = req.user.userId;
+        const isLiked = post.isLikedBy(userId);
+
+        if (isLiked) {
+            // Unlike the post
+            await post.removeLike(userId);
+            res.json({ 
+                message: 'Post unliked successfully', 
+                liked: false,
+                likesCount: post.likesCount
+            });
+        } else {
+            // Like the post
+            await post.addLike(userId);
+            res.json({ 
+                message: 'Post liked successfully', 
+                liked: true,
+                likesCount: post.likesCount
+            });
+        }
+
+    } catch (error) {
+        console.error('Like post error:', error);
+        res.status(500).json({ 
+            message: 'Failed to like/unlike post',
+            error: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/posts/:id/comment
+ * Add a comment to a post
+ */
+app.post('/api/posts/:id/comment', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { content } = req.body;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
+        if (!content || !content.trim()) {
+            return res.status(400).json({ message: 'Comment content is required' });
+        }
+
+        const post = await Post.findById(id);
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        if (!post.settings.allowComments) {
+            return res.status(403).json({ message: 'Comments are disabled for this post' });
+        }
+
+        // Add comment
+        await post.addComment(req.user.userId, content.trim());
+        
+        // Populate the post with updated comments
+        await post.populate('engagement.comments.user', 'username profile.profilePicture');
+
+        const newComment = post.engagement.comments[post.engagement.comments.length - 1];
+
+        res.json({
+            message: 'Comment added successfully',
+            comment: newComment,
+            commentsCount: post.commentsCount
+        });
+
+    } catch (error) {
+        console.error('Add comment error:', error);
+        res.status(500).json({ 
+            message: 'Failed to add comment',
+            error: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/posts/:id/share
+ * Share a post
+ */
+app.post('/api/posts/:id/share', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { shareType = 'repost' } = req.body;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
+        const post = await Post.findById(id);
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        if (!post.settings.allowShares) {
+            return res.status(403).json({ message: 'Sharing is disabled for this post' });
+        }
+
+        // Add share
+        await post.addShare(req.user.userId, shareType);
+
+        res.json({
+            message: 'Post shared successfully',
+            sharesCount: post.sharesCount
+        });
+
+    } catch (error) {
+        console.error('Share post error:', error);
+        res.status(500).json({ 
+            message: 'Failed to share post',
+            error: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/posts/upload-media
+ * Upload media for posts
+ */
+app.post('/api/posts/upload-media', authenticateToken, postMediaUpload.array('media', 5), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: 'No media files provided' });
+        }
+
+        const mediaUrls = req.files.map(file => ({
+            url: `${req.protocol}://${req.get('host')}/uploads/posts/${file.filename}`,
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        }));
+
+        res.json({
+            message: 'Media uploaded successfully',
+            media: mediaUrls
+        });
+
+    } catch (error) {
+        console.error('Upload media error:', error);
+        
+        // Clean up uploaded files on error
+        if (req.files) {
+            req.files.forEach(file => {
+                const filePath = path.join(postMediaDir, file.filename);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            });
+        }
+        
+        res.status(500).json({ 
+            message: 'Failed to upload media',
+            error: error.message 
+        });
+    }
+});
 
 // Get user's chats
 app.get('/api/chats', authenticateToken, async (req, res) => {
@@ -740,6 +1173,10 @@ app.get('/api/chats/:chatId/messages', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch messages' });
     }
 });
+
+// =======================
+// USER ENDPOINTS
+// =======================
 
 // Get current user information
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
@@ -1126,4 +1563,11 @@ server.listen(PORT, () => {
     console.log('- GET /api/chats (get user chats)');
     console.log('- POST /api/chats (create chat)');
     console.log('- GET /api/chats/:chatId/messages (get messages)');
+    console.log('- GET /api/posts (get posts with pagination)');
+    console.log('- POST /api/posts (create post)');
+    console.log('- GET /api/posts/:id (get specific post)');
+    console.log('- POST /api/posts/:id/like (like/unlike post)');
+    console.log('- POST /api/posts/:id/comment (add comment)');
+    console.log('- POST /api/posts/:id/share (share post)');
+    console.log('- POST /api/posts/upload-media (upload post media)');
 });
