@@ -10,6 +10,18 @@ import PostCard from '../components/PostCard/PostCard';
 import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
 
 /**
+ * Configuration for API endpoints
+ * This automatically detects if we're in development or production
+ */
+const API_CONFIG = {
+    // Use environment variable if available, otherwise detect based on hostname
+    BASE_URL: process.env.REACT_APP_API_URL || 
+              (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                ? 'http://localhost:4000' 
+                : 'https://api.momento.lifestyle'),
+};
+
+/**
  * API service for making HTTP requests to the backend
  */
 const apiService = {
@@ -29,7 +41,17 @@ const apiService = {
                 queryParams.append('search', search);
             }
 
-            const response = await fetch(`/api/posts?${queryParams}`);
+            const url = `${API_CONFIG.BASE_URL}/api/posts?${queryParams}`;
+            console.log('Fetching posts from:', url); // Debug log
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // Add credentials if needed for CORS
+                credentials: 'include'
+            });
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -45,16 +67,21 @@ const apiService = {
 
     /**
      * Like or unlike a post
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object>} API response
      */
     async toggleLike(postId) {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/posts/${postId}/like`, {
+            const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/like`;
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -74,13 +101,16 @@ const apiService = {
     async addComment(postId, content) {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/posts/${postId}/comment`, {
+            const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/comment`;
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ content }),
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -96,17 +126,23 @@ const apiService = {
 
     /**
      * Share a post
+     * @param {string} postId - Post ID
+     * @param {string} shareType - Type of share ('repost', 'story', 'direct_message', 'external')
+     * @returns {Promise<Object>} API response
      */
     async sharePost(postId, shareType = 'repost') {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/posts/${postId}/share`, {
+            const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/share`;
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ shareType })
+                body: JSON.stringify({ shareType }),
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -162,6 +198,8 @@ const Home = () => {
 
     /**
      * Load posts from the API
+     * @param {number} pageNumber - Page to fetch
+     * @param {boolean} reset - Whether to reset the posts array (for new filters)
      */
     const loadPosts = useCallback(async (pageNumber = 1, reset = false) => {
         if (isLoading) return;
