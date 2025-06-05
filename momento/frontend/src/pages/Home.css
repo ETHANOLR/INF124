@@ -177,6 +177,7 @@
     margin-bottom: 8px;
     color: #333;
     line-height: 1.4;
+    height: 50px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -222,6 +223,7 @@
 .post-user {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 15px;
     padding: 8px 0;
 }
@@ -238,12 +240,49 @@
     justify-content: center;
     font-weight: 600;
     color: #666;
+    flex-shrink: 0;
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
 .home-username {
     font-size: 14px;
     color: #333;
     font-weight: 500;
+    margin-bottom: 4px;
+}
+
+/* 小型关注按钮 */
+.follow-btn-small {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.follow-btn-small:hover {
+    background-color: #e05a4d;
+    transform: translateY(-1px);
+}
+
+.follow-btn-small.following {
+    background-color: #e0e0e0;
+    color: #666;
+}
+
+.follow-btn-small.following:hover {
+    background-color: #ffcccc;
+    color: #ff6f61;
 }
 
 /* Post Statistics */
@@ -439,6 +478,23 @@
         padding: 6px 10px;
         font-size: 12px;
     }
+
+    .post-user {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .author-info {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .home-username {
+        margin-bottom: 0;
+    }
 }
 
 @media (max-width: 480px) {
@@ -461,6 +517,11 @@
     .feed-title {
         font-size: 20px;
         margin-bottom: 15px;
+    }
+
+    .follow-btn-small {
+        padding: 3px 8px;
+        font-size: 11px;
     }
 }
 
@@ -495,5 +556,14 @@
 
     .action-button:hover {
         background-color: #4a4a4a;
+    }
+
+    .follow-btn-small {
+        background-color: #ff6f61;
+    }
+
+    .follow-btn-small.following {
+        background-color: #4a4a4a;
+        color: #b0b0b0;
     }
 }

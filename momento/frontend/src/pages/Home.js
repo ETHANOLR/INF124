@@ -44,12 +44,18 @@ const apiService = {
             const url = `${API_CONFIG.BASE_URL}/api/posts?${queryParams}`;
             console.log('Fetching posts from:', url); // Debug log
             
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            const token = localStorage.getItem('token');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                // Add credentials if needed for CORS
+                headers,
                 credentials: 'include'
             });
             
@@ -73,6 +79,10 @@ const apiService = {
     async toggleLike(postId) {
         try {
             const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Authentication required');
+            }
+
             const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/like`;
             
             const response = await fetch(url, {
@@ -96,12 +106,18 @@ const apiService = {
     },
 
     /**
-     * Add a comment to a post
+     * Follow or unfollow a user
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} API response
      */
-    async addComment(postId, content) {
+    async toggleFollow(userId) {
         try {
             const token = localStorage.getItem('token');
-            const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/comment`;
+            if (!token) {
+                throw new Error('Authentication required');
+            }
+
+            const url = `${API_CONFIG.BASE_URL}/api/users/${userId}/follow`;
             
             const response = await fetch(url, {
                 method: 'POST',
@@ -109,7 +125,6 @@ const apiService = {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ content }),
                 credentials: 'include'
             });
 
@@ -119,7 +134,7 @@ const apiService = {
 
             return await response.json();
         } catch (error) {
-            console.error('Error adding comment:', error);
+            console.error('Error toggling follow:', error);
             throw error;
         }
     },
@@ -133,6 +148,10 @@ const apiService = {
     async sharePost(postId, shareType = 'repost') {
         try {
             const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Authentication required');
+            }
+
             const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/share`;
             
             const response = await fetch(url, {
@@ -179,6 +198,20 @@ const Home = () => {
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
+
+    // 获取当前用户信息
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const tokenData = JSON.parse(atob(token.split('.')[1]));
+                setCurrentUser({ userId: tokenData.userId, username: tokenData.username });
+            } catch (e) {
+                console.error('Error parsing token:', e);
+            }
+        }
+    }, []);
 
     /**
      * Map tab names to API sort parameters
@@ -198,8 +231,6 @@ const Home = () => {
 
     /**
      * Load posts from the API
-     * @param {number} pageNumber - Page to fetch
-     * @param {boolean} reset - Whether to reset the posts array (for new filters)
      */
     const loadPosts = useCallback(async (pageNumber = 1, reset = false) => {
         if (isLoading) return;
@@ -269,9 +300,23 @@ const Home = () => {
     };
 
     /**
+     * Handle post click - navigate to post detail page
+     */
+    const handlePostClick = (postId) => {
+        navigate(`/posts/${postId}`);
+    };
+
+    /**
      * Handle like button click
      */
-    const handleLike = async (postId) => {
+    const handleLike = async (e, postId) => {
+        e.stopPropagation();
+        
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
         try {
             const result = await apiService.toggleLike(postId);
             
@@ -290,22 +335,69 @@ const Home = () => {
             
         } catch (error) {
             console.error('Error liking post:', error);
-            // You could show a toast notification here
+            if (error.message.includes('Authentication required')) {
+                navigate('/login');
+            }
+        }
+    };
+
+    /**
+     * Handle follow button click
+     */
+    const handleFollow = async (e, userId) => {
+        e.stopPropagation();
+        
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const result = await apiService.toggleFollow(userId);
+            
+            // Update the specific post's author in the state
+            setPosts(prevPosts => 
+                prevPosts.map(post => 
+                    post.author._id === userId 
+                        ? { 
+                            ...post, 
+                            author: {
+                                ...post.author,
+                                isFollowedByUser: result.following,
+                                followersCount: result.followersCount
+                            }
+                          }
+                        : post
+                )
+            );
+            
+        } catch (error) {
+            console.error('Error following user:', error);
+            if (error.message.includes('Authentication required')) {
+                navigate('/login');
+            }
         }
     };
 
     /**
      * Handle comment button click
      */
-    const handleComment = (postId) => {
-        // Navigate to post detail page where comments can be added
-        navigate(`/posts/${postId}`);
+    const handleComment = (e, postId) => {
+        e.stopPropagation();
+        navigate(`/posts/${postId}#comments`);
     };
 
     /**
      * Handle share button click
      */
-    const handleShare = async (postId) => {
+    const handleShare = async (e, postId) => {
+        e.stopPropagation();
+        
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
         try {
             await apiService.sharePost(postId, 'repost');
             
@@ -318,11 +410,13 @@ const Home = () => {
                 )
             );
             
-            // You could show a success message here
+            alert('Post shared successfully!');
             
         } catch (error) {
             console.error('Error sharing post:', error);
-            // You could show an error message here
+            if (error.message.includes('Authentication required')) {
+                navigate('/login');
+            }
         }
     };
 
@@ -330,6 +424,10 @@ const Home = () => {
      * Handle create post button click
      */
     const handleCreatePost = () => {
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
         navigate('/create-post');
     };
 
@@ -457,7 +555,12 @@ const Home = () => {
                     >
                         <div className="post-grid">
                             {posts.map((post) => (
-                                <div key={post._id || post.id} className="post-item">
+                                <div 
+                                    key={post._id || post.id} 
+                                    className="post-item"
+                                    onClick={() => handlePostClick(post._id || post.id)}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     {/* Post thumbnail - use first image if available */}
                                     <div className="home-post-thumbnail">
                                         {post.media?.images?.[0]?.url ? (
@@ -514,9 +617,20 @@ const Home = () => {
                                                     </div>
                                                 )}
                                             </div>
-                                            <span className="home-username">
-                                                {post.author?.profile?.displayName || post.author?.username}
-                                            </span>
+                                            <div className="author-info">
+                                                <span className="home-username">
+                                                    {post.author?.profile?.displayName || post.author?.username}
+                                                </span>
+                                                {/* 关注按钮 */}
+                                                {currentUser && currentUser.userId !== post.author._id && (
+                                                    <button 
+                                                        className={`follow-btn-small ${post.author.isFollowedByUser ? 'following' : ''}`}
+                                                        onClick={(e) => handleFollow(e, post.author._id)}
+                                                    >
+                                                        {post.author.isFollowedByUser ? 'Following' : 'Follow'}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         
                                         {/* Post statistics */}
@@ -530,19 +644,19 @@ const Home = () => {
                                         <div className="post-actions">
                                             <button 
                                                 className={`action-button ${post.isLikedByUser ? 'liked' : ''}`}
-                                                onClick={() => handleLike(post._id || post.id)}
+                                                onClick={(e) => handleLike(e, post._id || post.id)}
                                             >
                                                 {post.isLikedByUser ? '❤️' : '🤍'} Like
                                             </button>
                                             <button 
                                                 className="action-button" 
-                                                onClick={() => handleComment(post._id || post.id)}
+                                                onClick={(e) => handleComment(e, post._id || post.id)}
                                             >
                                                 💬 Comment
                                             </button>
                                             <button 
                                                 className="action-button" 
-                                                onClick={() => handleShare(post._id || post.id)}
+                                                onClick={(e) => handleShare(e, post._id || post.id)}
                                             >
                                                 📤 Share
                                             </button>

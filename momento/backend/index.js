@@ -19,6 +19,7 @@ const Post = require('./models/Post');
 const app = express();
 const server = http.createServer(app);
 
+// CORS Configuration - allowed origins for cross-origin requests
 const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
@@ -36,6 +37,7 @@ const io = socketIo(server, {
     }
 });
 
+// CORS middleware configuration
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
@@ -53,9 +55,10 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
+
 app.use(express.json());
 
-// JWT Secret
+// JWT Secret for token signing and verification
 const JWT_SECRET = process.env.JWT_SECRET || 'momento-default-secret-change-in-production';
 
 // Connect to MongoDB Atlas
@@ -101,7 +104,7 @@ const postMediaStorage = multer.diskStorage({
     }
 });
 
-// File filter for avatar uploads
+// File filter for image uploads only
 const avatarFileFilter = (req, file, cb) => {
     // Only allow image files
     if (file.mimetype.startsWith('image/')) {
@@ -113,7 +116,7 @@ const avatarFileFilter = (req, file, cb) => {
 
 const avatarUpload = multer({
     storage: avatarStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for avatars
     fileFilter: avatarFileFilter
 });
 
@@ -142,7 +145,7 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000);
 
-// Helper function to validate ObjectId
+// Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
     return id && id !== 'undefined' && id !== 'null' && mongoose.Types.ObjectId.isValid(id);
 };
@@ -158,7 +161,7 @@ const standardizeChatObject = (chat) => {
     };
 };
 
-// Socket.IO connection handling
+// Socket.IO connection handling for real-time messaging
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -466,13 +469,21 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Test API endpoint
+// ===============================
+// API ENDPOINTS
+// ===============================
+
+// Test API endpoint to check database connection
 app.get('/api/TestDB', (req, res) => {
     res.json({ 
         message: 'Testing Mongo DB',
         connection: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
     });
 });
+
+// ===============================
+// USER AUTHENTICATION ENDPOINTS
+// ===============================
 
 // User registration endpoint
 app.post('/api/users', async (req, res) => {
@@ -637,6 +648,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// ===============================
+// POST ENDPOINTS
+// ===============================
+
 /**
  * GET /api/posts
  * Fetch posts with pagination, filtering, and sorting
@@ -651,6 +666,20 @@ app.get('/api/posts', async (req, res) => {
             author,
             search
         } = req.query;
+
+        // Check for authentication token
+        const authHeader = req.headers['authorization'];
+        let currentUserId = null;
+
+        if (authHeader) {
+            try {
+                const token = authHeader.split(' ')[1];
+                const decoded = jwt.verify(token, JWT_SECRET);
+                currentUserId = decoded.userId;
+            } catch (err) {
+                // Token invalid, continue processing but currentUserId is null
+            }
+        }
 
         // Build base query
         let query = {
@@ -742,6 +771,32 @@ app.get('/api/posts', async (req, res) => {
                 .lean();
         }
 
+        // If user is logged in, add interaction states
+        if (currentUserId) {
+            const currentUser = await User.findById(currentUserId);
+            if (currentUser) {
+                posts = posts.map(post => {
+                    const postObj = post.toJSON ? post.toJSON() : post;
+                    
+                    // Check if user has liked this post
+                    postObj.isLikedByUser = post.engagement?.likes?.some(
+                        like => like.user.toString() === currentUserId
+                    ) || false;
+                    
+                    // Check if user is following the author
+                    if (currentUserId !== postObj.author._id.toString()) {
+                        postObj.author.isFollowedByUser = currentUser.relationships.following.some(
+                            follow => follow.user.toString() === postObj.author._id.toString()
+                        ) || false;
+                    } else {
+                        postObj.author.isFollowedByUser = false; // Cannot follow yourself
+                    }
+                    
+                    return postObj;
+                });
+            }
+        }
+
         // Get total count for pagination
         const totalPosts = await Post.countDocuments(query);
         const totalPages = Math.ceil(totalPosts / limitNum);
@@ -831,19 +886,33 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
 
 /**
  * GET /api/posts/:id
- * Get a specific post by ID
+ * Get a specific post by ID with user interaction states
  */
 app.get('/api/posts/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const authHeader = req.headers['authorization'];
+        let currentUserId = null;
+
+        // If authentication token exists, get user ID
+        if (authHeader) {
+            try {
+                const token = authHeader.split(' ')[1];
+                const decoded = jwt.verify(token, JWT_SECRET);
+                currentUserId = decoded.userId;
+            } catch (err) {
+                // Token invalid, continue processing but currentUserId is null
+                console.log('Invalid token in post request');
+            }
+        }
 
         if (!isValidObjectId(id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
         }
 
         const post = await Post.findById(id)
-            .populate('author', 'username profile.profilePicture profile.displayName')
-            .populate('engagement.comments.user', 'username profile.profilePicture');
+            .populate('author', 'username profile.profilePicture profile.displayName stats.followersCount')
+            .populate('engagement.comments.user', 'username profile.profilePicture profile.displayName');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -854,10 +923,37 @@ app.get('/api/posts/:id', async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Increment view count
-        post.incrementViews();
+        // If user is logged in, check like status and follow status
+        let isLikedByUser = false;
+        let isFollowedByUser = false;
 
-        res.json(post);
+        if (currentUserId) {
+            // Check if user has liked this post
+            isLikedByUser = post.isLikedBy(currentUserId);
+
+            // Check if user is following the author
+            if (currentUserId !== post.author._id.toString()) {
+                const currentUser = await User.findById(currentUserId);
+                if (currentUser) {
+                    isFollowedByUser = currentUser.relationships.following.some(
+                        follow => follow.user.toString() === post.author._id.toString()
+                    );
+                }
+            }
+
+            // Increment view count (logged in users)
+            post.incrementViews(currentUserId);
+        } else {
+            // Increment view count (anonymous users)
+            post.incrementViews();
+        }
+
+        // Add user interaction states to response
+        const postResponse = post.toJSON();
+        postResponse.isLikedByUser = isLikedByUser;
+        postResponse.author.isFollowedByUser = isFollowedByUser;
+
+        res.json(postResponse);
 
     } catch (error) {
         console.error('Get post error:', error);
@@ -947,7 +1043,7 @@ app.post('/api/posts/:id/comment', authenticateToken, async (req, res) => {
         await post.addComment(req.user.userId, content.trim());
         
         // Populate the post with updated comments
-        await post.populate('engagement.comments.user', 'username profile.profilePicture');
+        await post.populate('engagement.comments.user', 'username profile.profilePicture profile.displayName');
 
         const newComment = post.engagement.comments[post.engagement.comments.length - 1];
 
@@ -1049,134 +1145,9 @@ app.post('/api/posts/upload-media', authenticateToken, postMediaUpload.array('me
     }
 });
 
-// Get user's chats
-app.get('/api/chats', authenticateToken, async (req, res) => {
-    try {
-        const chats = await Chat.find({ participants: req.user.userId })
-            .populate('participants', 'username profile.profilePicture activity.isOnline activity.lastActiveAt')
-            .populate('lastMessage')
-            .sort({ lastActivity: -1 });
-
-        const chatsWithUnread = await Promise.all(chats.map(async (chat) => {
-            const unreadCount = await Message.countDocuments({
-                chat: chat._id,
-                'readBy.user': { $ne: req.user.userId },
-                isDeleted: false
-            });
-
-            // Standardize chat object with consistent ID fields
-            return {
-                ...standardizeChatObject(chat),
-                unreadCount
-            };
-        }));
-
-        console.log(`Fetched ${chatsWithUnread.length} chats for user ${req.user.userId}`);
-        res.json(chatsWithUnread);
-    } catch (error) {
-        console.error('Get chats error:', error);
-        res.status(500).json({ message: 'Failed to fetch chats' });
-    }
-});
-
-// Create or get existing chat
-app.post('/api/chats', authenticateToken, async (req, res) => {
-    try {
-        const { participantId } = req.body;
-        const currentUserId = req.user.userId;
-
-        console.log(`Creating chat: ${currentUserId} -> ${participantId}`);
-
-        // Validate participant ID
-        if (!participantId || participantId === currentUserId) {
-            return res.status(400).json({ message: 'Invalid participant ID' });
-        }
-
-        if (!isValidObjectId(participantId)) {
-            return res.status(400).json({ message: 'Invalid participant ID format' });
-        }
-
-        // Check if participant user exists
-        const participantUser = await User.findById(participantId);
-        if (!participantUser) {
-            return res.status(404).json({ message: 'Participant user not found' });
-        }
-
-        // Check if chat already exists between these users
-        let chat = await Chat.findOne({
-            type: 'direct',
-            participants: { $all: [currentUserId, participantId], $size: 2 }
-        }).populate('participants', 'username profile.profilePicture activity.isOnline');
-
-        if (!chat) {
-            // Create new chat
-            chat = new Chat({
-                type: 'direct',
-                participants: [currentUserId, participantId],
-                createdBy: currentUserId,
-                participantSettings: [
-                    { user: currentUserId, joinedAt: new Date(), lastSeenAt: new Date() },
-                    { user: participantId, joinedAt: new Date(), lastSeenAt: new Date() }
-                ]
-            });
-            await chat.save();
-            await chat.populate('participants', 'username profile.profilePicture activity.isOnline');
-            console.log(`Created new chat: ${chat._id}`);
-        } else {
-            console.log(`Found existing chat: ${chat._id}`);
-        }
-
-        // Return standardized chat object
-        res.json(standardizeChatObject(chat));
-    } catch (error) {
-        console.error('Create chat error:', error);
-        res.status(500).json({ message: 'Failed to create chat' });
-    }
-});
-
-// Get messages for a specific chat
-app.get('/api/chats/:chatId/messages', authenticateToken, async (req, res) => {
-    try {
-        const { chatId } = req.params;
-        const { page = 1, limit = 50 } = req.query;
-        
-        console.log(`Fetching messages for chat: ${chatId}, user: ${req.user.userId}`);
-        
-        // Validate chatId
-        if (!isValidObjectId(chatId)) {
-            return res.status(400).json({ message: 'Invalid chat ID format' });
-        }
-        
-        // Verify user is participant of this chat
-        const chat = await Chat.findById(chatId);
-        if (!chat) {
-            return res.status(404).json({ message: 'Chat not found' });
-        }
-
-        if (!chat.participants.includes(req.user.userId)) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
-
-        const messages = await Message.find({ 
-            chat: chatId, 
-            isDeleted: false 
-        })
-            .populate('sender', 'username profile.profilePicture')
-            .sort({ timestamp: -1 })
-            .limit(limit * 1)
-            .skip((page - 1) * limit);
-
-        console.log(`Found ${messages.length} messages for chat ${chatId}`);
-        res.json(messages.reverse());
-    } catch (error) {
-        console.error('Get messages error:', error);
-        res.status(500).json({ message: 'Failed to fetch messages' });
-    }
-});
-
-// =======================
-// USER ENDPOINTS
-// =======================
+// ===============================
+// USER MANAGEMENT ENDPOINTS
+// ===============================
 
 // Get current user information
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
@@ -1452,7 +1423,7 @@ app.post('/api/users/avatar', authenticateToken, avatarUpload.single('avatar'), 
     }
 });
 
-// Password change endpoint - Added to handle password updates properly
+// Password change endpoint
 app.put('/api/users/password', authenticateToken, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -1507,6 +1478,250 @@ app.put('/api/users/password', authenticateToken, async (req, res) => {
     }
 });
 
+// FOLLOW/UNFOLLOW ENDPOINTS
+
+/**
+ * POST /api/users/:userId/follow
+ * Follow or unfollow a user
+ */
+app.post('/api/users/:userId/follow', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentUserId = req.user.userId;
+
+        // Validate user ID
+        if (!isValidObjectId(userId)) {
+            return res.status(400).json({ message: 'Invalid user ID' });
+        }
+
+        // Cannot follow yourself
+        if (userId === currentUserId) {
+            return res.status(400).json({ message: 'Cannot follow yourself' });
+        }
+
+        // Check if target user exists
+        const targetUser = await User.findById(userId);
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Get current user
+        const currentUser = await User.findById(currentUserId);
+        if (!currentUser) {
+            return res.status(404).json({ message: 'Current user not found' });
+        }
+
+        // Check if already following
+        const isFollowing = currentUser.relationships.following.some(
+            follow => follow.user.toString() === userId
+        );
+
+        if (isFollowing) {
+            // Unfollow user
+            await currentUser.unfollow(userId);
+            
+            // Remove from target user's followers
+            await User.findByIdAndUpdate(userId, {
+                $pull: { 'relationships.followers': { user: currentUserId } },
+                $inc: { 'stats.followersCount': -1 }
+            });
+
+            res.json({
+                message: 'User unfollowed successfully',
+                following: false,
+                followersCount: Math.max(0, targetUser.stats.followersCount - 1)
+            });
+
+        } else {
+            // Follow user
+            await currentUser.follow(userId);
+            
+            // Add to target user's followers
+            await User.findByIdAndUpdate(userId, {
+                $addToSet: { 'relationships.followers': { user: currentUserId } },
+                $inc: { 'stats.followersCount': 1 }
+            });
+
+            res.json({
+                message: 'User followed successfully',
+                following: true,
+                followersCount: targetUser.stats.followersCount + 1
+            });
+        }
+
+    } catch (error) {
+        console.error('Follow/unfollow error:', error);
+        res.status(500).json({ 
+            message: 'Failed to follow/unfollow user',
+            error: error.message 
+        });
+    }
+});
+
+/**
+ * GET /api/users/:userId/follow-status
+ * Check if current user is following the specified user
+ */
+app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentUserId = req.user.userId;
+
+        if (!isValidObjectId(userId)) {
+            return res.status(400).json({ message: 'Invalid user ID' });
+        }
+
+        const currentUser = await User.findById(currentUserId);
+        if (!currentUser) {
+            return res.status(404).json({ message: 'Current user not found' });
+        }
+
+        const isFollowing = currentUser.relationships.following.some(
+            follow => follow.user.toString() === userId
+        );
+
+        res.json({
+            following: isFollowing
+        });
+
+    } catch (error) {
+        console.error('Check follow status error:', error);
+        res.status(500).json({ 
+            message: 'Failed to check follow status',
+            error: error.message 
+        });
+    }
+});
+
+// ===============================
+// CHAT AND MESSAGING ENDPOINTS
+// ===============================
+
+// Get user's chats
+app.get('/api/chats', authenticateToken, async (req, res) => {
+    try {
+        const chats = await Chat.find({ participants: req.user.userId })
+            .populate('participants', 'username profile.profilePicture activity.isOnline activity.lastActiveAt')
+            .populate('lastMessage')
+            .sort({ lastActivity: -1 });
+
+        const chatsWithUnread = await Promise.all(chats.map(async (chat) => {
+            const unreadCount = await Message.countDocuments({
+                chat: chat._id,
+                'readBy.user': { $ne: req.user.userId },
+                isDeleted: false
+            });
+
+            // Standardize chat object with consistent ID fields
+            return {
+                ...standardizeChatObject(chat),
+                unreadCount
+            };
+        }));
+
+        console.log(`Fetched ${chatsWithUnread.length} chats for user ${req.user.userId}`);
+        res.json(chatsWithUnread);
+    } catch (error) {
+        console.error('Get chats error:', error);
+        res.status(500).json({ message: 'Failed to fetch chats' });
+    }
+});
+
+// Create or get existing chat
+app.post('/api/chats', authenticateToken, async (req, res) => {
+    try {
+        const { participantId } = req.body;
+        const currentUserId = req.user.userId;
+
+        console.log(`Creating chat: ${currentUserId} -> ${participantId}`);
+
+        // Validate participant ID
+        if (!participantId || participantId === currentUserId) {
+            return res.status(400).json({ message: 'Invalid participant ID' });
+        }
+
+        if (!isValidObjectId(participantId)) {
+            return res.status(400).json({ message: 'Invalid participant ID format' });
+        }
+
+        // Check if participant user exists
+        const participantUser = await User.findById(participantId);
+        if (!participantUser) {
+            return res.status(404).json({ message: 'Participant user not found' });
+        }
+
+        // Check if chat already exists between these users
+        let chat = await Chat.findOne({
+            type: 'direct',
+            participants: { $all: [currentUserId, participantId], $size: 2 }
+        }).populate('participants', 'username profile.profilePicture activity.isOnline');
+
+        if (!chat) {
+            // Create new chat
+            chat = new Chat({
+                type: 'direct',
+                participants: [currentUserId, participantId],
+                createdBy: currentUserId,
+                participantSettings: [
+                    { user: currentUserId, joinedAt: new Date(), lastSeenAt: new Date() },
+                    { user: participantId, joinedAt: new Date(), lastSeenAt: new Date() }
+                ]
+            });
+            await chat.save();
+            await chat.populate('participants', 'username profile.profilePicture activity.isOnline');
+            console.log(`Created new chat: ${chat._id}`);
+        } else {
+            console.log(`Found existing chat: ${chat._id}`);
+        }
+
+        // Return standardized chat object
+        res.json(standardizeChatObject(chat));
+    } catch (error) {
+        console.error('Create chat error:', error);
+        res.status(500).json({ message: 'Failed to create chat' });
+    }
+});
+
+// Get messages for a specific chat
+app.get('/api/chats/:chatId/messages', authenticateToken, async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { page = 1, limit = 50 } = req.query;
+        
+        console.log(`Fetching messages for chat: ${chatId}, user: ${req.user.userId}`);
+        
+        // Validate chatId
+        if (!isValidObjectId(chatId)) {
+            return res.status(400).json({ message: 'Invalid chat ID format' });
+        }
+        
+        // Verify user is participant of this chat
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
+        }
+
+        if (!chat.participants.includes(req.user.userId)) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const messages = await Message.find({ 
+            chat: chatId, 
+            isDeleted: false 
+        })
+            .populate('sender', 'username profile.profilePicture')
+            .sort({ timestamp: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        console.log(`Found ${messages.length} messages for chat ${chatId}`);
+        res.json(messages.reverse());
+    } catch (error) {
+        console.error('Get messages error:', error);
+        res.status(500).json({ message: 'Failed to fetch messages' });
+    }
+});
+
 // Debug endpoint to test user fetching
 app.get('/api/debug/users', authenticateToken, async (req, res) => {
     try {
@@ -1548,6 +1763,10 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!' });
 });
 
+// ===============================
+// SERVER STARTUP
+// ===============================
+
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
@@ -1560,6 +1779,8 @@ server.listen(PORT, () => {
     console.log('- PUT /api/users/profile (update profile)');
     console.log('- POST /api/users/avatar (upload avatar)');
     console.log('- PUT /api/users/password (change password)');
+    console.log('- POST /api/users/:userId/follow (follow/unfollow user)');
+    console.log('- GET /api/users/:userId/follow-status (check follow status)');
     console.log('- GET /api/chats (get user chats)');
     console.log('- POST /api/chats (create chat)');
     console.log('- GET /api/chats/:chatId/messages (get messages)');
