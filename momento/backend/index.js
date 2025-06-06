@@ -769,6 +769,104 @@ app.get('/api/posts', async (req, res) => {
 });
 
 /**
+ * GET /api/search
+ * Generalized search across posts, users, tags, and places
+ */
+app.get('/api/search', async (req, res) => {
+    try {
+        const { q, type = 'all', page = 1, limit = 10 } = req.query;
+
+        if (!q || !q.trim()) {
+            return res.status(400).json({ message: 'Query cannot be empty' });
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+        const queryText = q.trim();
+
+        const results = {};
+
+        // Normalize type to lowercase for comparison
+        const searchType = type.toLowerCase();
+
+        // Search in posts
+        if (searchType === 'all' || searchType === 'posts') {
+            results.posts = await Post.find({ 
+                $text: { $search: queryText },
+                'status.published': true,
+                'status.isDeleted': false
+            })
+            .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+            .select({ score: { $meta: 'textScore' }, title: 1, content: 1, category: 1, tags: 1, author: 1, createdAt: 1 })
+            .populate('author', 'username profile.profilePicture profile.displayName')
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+        }
+
+        // Search in users
+        if (searchType === 'all' || searchType === 'users') {
+            results.users = await User.find({
+                $or: [
+                    { username: new RegExp(queryText, 'i') },
+                    { 'profile.displayName': new RegExp(queryText, 'i') }
+                ]
+            })
+            .select('username profile.displayName profile.profilePicture')
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+        }
+
+        // Search in tags (from Post collection)
+        if (searchType === 'all' || searchType === 'tags') {
+            results.tags = await Post.aggregate([
+                { $match: { tags: { $regex: queryText, $options: 'i' }, 'status.published': true, 'status.isDeleted': false } },
+                { $unwind: '$tags' },
+                { $match: { tags: { $regex: queryText, $options: 'i' } } },
+                { $group: { _id: '$tags', count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $skip: skip },
+                { $limit: limitNum }
+            ]);
+        }
+
+        // Search in places (from Post.location.name or address fields)
+        if (searchType === 'all' || searchType === 'place') {
+            results.places = await Post.find({
+                $or: [
+                    { 'location.name': new RegExp(queryText, 'i') },
+                    { 'location.address.city': new RegExp(queryText, 'i') },
+                    { 'location.address.state': new RegExp(queryText, 'i') },
+                    { 'location.address.country': new RegExp(queryText, 'i') }
+                ],
+                'status.published': true,
+                'status.isDeleted': false
+            })
+            .select('location.name location.address createdAt')
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+        }
+
+        res.json({
+            query: queryText,
+            type: searchType,
+            results,
+            pagination: {
+                currentPage: pageNum,
+                hasNextPage: true // Optional: improve by checking count
+            }
+        });
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).json({ message: 'Search failed' });
+    }
+});
+
+
+/**
  * POST /api/posts
  * Create a new post
  */
@@ -1564,6 +1662,7 @@ server.listen(PORT, () => {
     console.log('- POST /api/chats (create chat)');
     console.log('- GET /api/chats/:chatId/messages (get messages)');
     console.log('- GET /api/posts (get posts with pagination)');
+    console.log('- GET /api/search (get posts by giving search query with pagination')
     console.log('- POST /api/posts (create post)');
     console.log('- GET /api/posts/:id (get specific post)');
     console.log('- POST /api/posts/:id/like (like/unlike post)');
