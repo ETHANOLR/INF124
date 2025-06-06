@@ -839,86 +839,103 @@ app.get('/api/search', async (req, res) => {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
         const queryText = q.trim();
-
-        const results = {};
-
-        // Normalize type to lowercase for comparison
         const searchType = type.toLowerCase();
 
-        // Search in posts
+        const baseFilter = {
+            'status.published': true,
+            'status.isDeleted': false
+        };
+
+        let textResults = [], fallbackResults = [];
+
+        // Run $text search if allowed
         if (searchType === 'all' || searchType === 'posts') {
-            results.posts = await Post.find({ 
-                $text: { $search: queryText },
-                'status.published': true,
-                'status.isDeleted': false
+            textResults = await Post.find({
+                ...baseFilter,
+                $text: { $search: queryText }
             })
-            .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
-            .select({ score: { $meta: 'textScore' }, title: 1, content: 1, category: 1, tags: 1, author: 1, createdAt: 1 })
-            .populate('author', 'username profile.profilePicture profile.displayName')
-            .skip(skip)
-            .limit(limitNum)
-            .lean();
+                .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+                .select({ score: { $meta: 'textScore' }, title: 1, content: 1, category: 1, tags: 1, author: 1, createdAt: 1, media: 1, location: 1 })
+                .populate('author', 'username profile.profilePicture profile.displayName')
+                .skip(skip)
+                .limit(limitNum)
+                .lean();
         }
 
-        // Search in users
+        // Build fallback $or conditions
+        const orConditions = [];
+
         if (searchType === 'all' || searchType === 'users') {
-            results.users = await User.find({
+            const matchedUsers = await User.find({
                 $or: [
                     { username: new RegExp(queryText, 'i') },
                     { 'profile.displayName': new RegExp(queryText, 'i') }
                 ]
-            })
-            .select('username profile.displayName profile.profilePicture')
-            .skip(skip)
-            .limit(limitNum)
-            .lean();
+            }).select('_id').lean();
+
+            const userIds = matchedUsers.map(u => u._id);
+            if (userIds.length > 0) {
+                orConditions.push({ author: { $in: userIds } });
+            }
         }
 
-        // Search in tags (from Post collection)
         if (searchType === 'all' || searchType === 'tags') {
-            results.tags = await Post.aggregate([
-                { $match: { tags: { $regex: queryText, $options: 'i' }, 'status.published': true, 'status.isDeleted': false } },
-                { $unwind: '$tags' },
-                { $match: { tags: { $regex: queryText, $options: 'i' } } },
-                { $group: { _id: '$tags', count: { $sum: 1 } } },
-                { $sort: { count: -1 } },
-                { $skip: skip },
-                { $limit: limitNum }
-            ]);
+            orConditions.push({ tags: { $regex: queryText, $options: 'i' } });
         }
 
-        // Search in places (from Post.location.name or address fields)
         if (searchType === 'all' || searchType === 'place') {
-            results.places = await Post.find({
+            orConditions.push({
                 $or: [
                     { 'location.name': new RegExp(queryText, 'i') },
                     { 'location.address.city': new RegExp(queryText, 'i') },
                     { 'location.address.state': new RegExp(queryText, 'i') },
                     { 'location.address.country': new RegExp(queryText, 'i') }
-                ],
-                'status.published': true,
-                'status.isDeleted': false
-            })
-            .select('location.name location.address createdAt')
-            .skip(skip)
-            .limit(limitNum)
-            .lean();
+                ]
+            });
         }
+
+        if (orConditions.length > 0) {
+            fallbackResults = await Post.find({
+                ...baseFilter,
+                $or: orConditions
+            })
+                .sort({ createdAt: -1 })
+                .select('title content category tags author createdAt media location')
+                .populate('author', 'username profile.profilePicture profile.displayName')
+                .skip(skip)
+                .limit(limitNum)
+                .lean();
+        }
+
+        // Merge results and deduplicate
+        const seen = new Set();
+        const combinedPosts = [...textResults, ...fallbackResults.filter(p => {
+            const id = p._id.toString();
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        })];
+
+        console.log('Number of posts found:', combinedPosts.length);
 
         res.json({
             query: queryText,
             type: searchType,
-            results,
+            results: {
+                posts: combinedPosts
+            },
             pagination: {
                 currentPage: pageNum,
-                hasNextPage: true // Optional: improve by checking count
+                hasNextPage: combinedPosts.length >= limitNum
             }
         });
+
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).json({ message: 'Search failed' });
     }
 });
+
 
 /**
  * POST /api/posts

@@ -51,11 +51,12 @@ const SearchPage = () => {
     setIsLoading(true);
 
     try {
+      console.log(`${API_BASE}/api/search?q=${encodeURIComponent(searchParam)}&type=${searchCategory.toLowerCase()}&page=${pageNumber}`);
       const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(searchParam)}&type=${searchCategory.toLowerCase()}&page=${pageNumber}`);
       const data = await res.json();
+      console.log(`data received: `);
 
-      const categoryKey = searchCategory.toLowerCase();
-      const items = categoryKey === 'all' ? data.results.posts || [] : data.results[categoryKey] || [];
+      const items = data.results.posts || [];
 
       if (isNewSearch) {
         setResults(items);
