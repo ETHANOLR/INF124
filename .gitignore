@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
+momento/node_modules/
 
 # testing
 /coverage
@@ -11,6 +12,8 @@
 # production
 /build
 .idea/
+/momento/frontend/build/
+/momento/backend/uploads/avatars
 
 # misc
 .DS_Store
