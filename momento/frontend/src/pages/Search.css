@@ -197,6 +197,226 @@ li {
   margin-bottom: 10px;
 }
 
-.Search-post-title {
-  margin-left: 10px;
+/* Post Thumbnail */
+.search-post-thumbnail {
+  height: 180px;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.search-post-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.post-item:hover .search-post-thumbnail img {
+  transform: scale(1.05);
+}
+
+/* Post Content */
+.search-post-content {
+  padding: 20px;
+}
+
+.search-post-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+  line-height: 1.4;
+  height: 50px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.search-post-details {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Post Metadata */
+.search-post-metadata {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  font-size: 12px;
+}
+
+.search-post-category {
+  background-color: #ff6f61;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.search-post-date {
+  color: #999;
+  font-weight: 400;
+}
+
+/* Author Information */
+.search-post-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  padding: 8px 0;
+}
+
+.search-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  margin-right: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.search-author-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.search-username {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+/* 小型关注按钮 */
+.follow-btn-small {
+  background-color: #ff6f61;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.follow-btn-small:hover {
+  background-color: #e05a4d;
+  transform: translateY(-1px);
+}
+
+.follow-btn-small.following {
+  background-color: #e0e0e0;
+  color: #666;
+}
+
+.follow-btn-small.following:hover {
+  background-color: #ffcccc;
+  color: #ff6f61;
+}
+
+/* Post Statistics */
+.post-stats {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding: 10px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.post-stats span {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.post-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  padding: 8px 14px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-button:hover {
+  background-color: #e9ecef;
+  transform: translateY(-1px);
+}
+
+.action-button.liked {
+  background-color: #ffe6e6;
+  border-color: #ff6f61;
+  color: #ff6f61;
+}
+
+.action-button.liked:hover {
+  background-color: #ffcccc;
+}
+
+/* Loading Indicators */
+.posts-loader {
+  padding: 30px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.posts-loader::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #ff6f61;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.posts-end-message {
+  padding: 30px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  font-style: italic;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 20px;
 }
