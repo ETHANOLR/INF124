@@ -907,14 +907,16 @@ app.get('/api/search', async (req, res) => {
                 .lean();
         }
 
-        // Merge results and deduplicate
         const seen = new Set();
-        const combinedPosts = [...textResults, ...fallbackResults.filter(p => {
-            const id = p._id.toString();
-            if (seen.has(id)) return false;
-            seen.add(id);
-            return true;
-        })];
+        const combinedPosts = [];
+
+        for (const post of [...textResults, ...fallbackResults]) {
+            const id = post._id.toString();
+            if (!seen.has(id)) {
+                seen.add(id);
+                combinedPosts.push(post);
+            }
+        }
 
         console.log('Number of posts found:', combinedPosts.length);
 
