@@ -159,6 +159,7 @@ const PostDetail = () => {
             try {
                 setLoading(true);
                 const postData = await apiService.fetchPost(postId);
+                console.log('Loaded post data:', postData); // Debug log
                 setPost(postData);
             } catch (err) {
                 setError('Failed to load post');
@@ -180,8 +181,13 @@ const PostDetail = () => {
             return;
         }
 
+        if (!post?.id) {
+            console.error('Post ID is missing');
+            return;
+        }
+
         try {
-            const result = await apiService.toggleLike(post._id, authToken);
+            const result = await apiService.toggleLike(post.id, authToken);
             setPost(prevPost => ({
                 ...prevPost,
                 likesCount: result.likesCount,
@@ -210,9 +216,15 @@ const PostDetail = () => {
             return;
         }
 
+        if (!post?.id) {
+            console.error('Post ID is missing for comment submission');
+            return;
+        }
+
         try {
             setIsSubmittingComment(true);
-            const result = await apiService.addComment(post._id, newComment.trim(), authToken);
+            console.log('Submitting comment for post ID:', post.id); // Debug log
+            const result = await apiService.addComment(post.id, newComment.trim(), authToken);
             
             // Update post status
             setPost(prevPost => ({
@@ -244,8 +256,13 @@ const PostDetail = () => {
             return;
         }
 
+        if (!post?.id) {
+            console.error('Post ID is missing');
+            return;
+        }
+
         try {
-            const result = await apiService.sharePost(post._id, authToken);
+            const result = await apiService.sharePost(post.id, authToken);
             setPost(prevPost => ({
                 ...prevPost,
                 sharesCount: result.sharesCount
@@ -270,8 +287,13 @@ const PostDetail = () => {
             return;
         }
 
+        if (!post?.author?.id) {
+            console.error('Author ID is missing');
+            return;
+        }
+
         try {
-            const result = await apiService.toggleFollow(post.author._id, authToken);
+            const result = await apiService.toggleFollow(post.author.id, authToken);
             setPost(prevPost => ({
                 ...prevPost,
                 author: {
@@ -386,7 +408,7 @@ const PostDetail = () => {
                             </div>
                             
                             {/* Follow button */}
-                            {currentUser && currentUser.id !== post.author._id && (
+                            {currentUser && currentUser.id !== post.author.id && (
                                 <button 
                                     className={`follow-btn ${post.author.isFollowedByUser ? 'following' : ''}`}
                                     onClick={handleFollow}
@@ -485,7 +507,7 @@ const PostDetail = () => {
                         {/* Comments list */}
                         <div className="comments-list">
                             {post.engagement?.comments?.map((comment) => (
-                                <div key={comment._id} className="comment-item">
+                                <div key={comment.id || comment._id} className="comment-item">
                                     <div className="comment-header">
                                         <div className="comment-author">
                                             <div className="comment-avatar">

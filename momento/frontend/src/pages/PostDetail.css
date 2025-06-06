@@ -317,15 +317,19 @@
     margin: 30px 0 20px 0;
 }
 
-/* Comment form */
+/* Comment form - IMPROVED STYLING */
 .comment-form {
     margin-bottom: 30px;
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
 }
 
 .comment-input-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 15px;
 }
 
 .comment-input {
@@ -336,13 +340,22 @@
     font-size: 14px;
     font-family: inherit;
     resize: vertical;
-    min-height: 80px;
-    transition: border-color 0.2s ease;
+    min-height: 100px;
+    line-height: 1.5;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    background-color: white;
 }
 
 .comment-input:focus {
     outline: none;
     border-color: #ff6f61;
+    box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.1);
+}
+
+.comment-input::placeholder {
+    color: #999;
+    font-style: italic;
 }
 
 .comment-submit-btn {
@@ -355,25 +368,35 @@
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
+    min-width: 120px;
 }
 
 .comment-submit-btn:hover:not(:disabled) {
     background-color: #e05a4d;
+    transform: translateY(-1px);
 }
 
 .comment-submit-btn:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+    transform: none;
 }
 
 /* Login prompt */
 .login-prompt {
     text-align: center;
-    padding: 20px;
+    padding: 30px 20px;
     background-color: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 12px;
     margin-bottom: 30px;
+    border: 2px dashed #e9ecef;
+}
+
+.login-prompt p {
+    margin: 0;
+    color: #666;
+    font-size: 16px;
 }
 
 .login-link {
@@ -383,6 +406,7 @@
     text-decoration: underline;
     cursor: pointer;
     font-size: inherit;
+    font-weight: 500;
 }
 
 .login-link:hover {
@@ -420,6 +444,7 @@
     border-radius: 50%;
     overflow: hidden;
     background-color: #e0e0e0;
+    flex-shrink: 0;
 }
 
 .comment-avatar img {
@@ -516,6 +541,14 @@
         padding: 0 20px 20px;
     }
 
+    .comment-form {
+        padding: 15px;
+    }
+
+    .comment-input {
+        min-height: 80px;
+    }
+
     .comment-content {
         margin-left: 0;
         margin-top: 10px;
@@ -554,6 +587,15 @@
     .comments-section {
         padding: 0 15px 15px;
     }
+
+    .comment-form {
+        padding: 12px;
+    }
+
+    .comment-input {
+        padding: 12px;
+        min-height: 70px;
+    }
 }
 
 /* Dark mode support */
@@ -579,8 +621,13 @@
         color: #e0e0e0;
     }
 
-    .comment-input {
+    .comment-form {
         background-color: #3a3a3a;
+        border-color: #4a4a4a;
+    }
+
+    .comment-input {
+        background-color: #2d2d2d;
         border-color: #4a4a4a;
         color: #e0e0e0;
     }
@@ -605,5 +652,10 @@
 
     .comment-content {
         color: #e0e0e0;
+    }
+
+    .login-prompt {
+        background-color: #3a3a3a;
+        border-color: #4a4a4a;
     }
 }
