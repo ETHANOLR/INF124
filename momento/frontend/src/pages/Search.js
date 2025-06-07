@@ -29,8 +29,6 @@ const SearchPage = () => {
 
   const query = useQuery();
   const searchParam = query.get('q');
-
-  const hasSearched = useRef(false);
   const navigate = useNavigate();
   
   // 获取当前用户信息
@@ -74,8 +72,7 @@ const SearchPage = () => {
   };
 
   useEffect(() => {
-    if (searchParam && !hasSearched.current) {
-      hasSearched.current = true;
+    if (searchParam) {
       fetchResults(1, true);
     }
   }, [searchParam]);
@@ -102,7 +99,6 @@ const SearchPage = () => {
   const handleSearchCategory = (input) => {
     setCategory(input);
     setPage(1);
-    hasSearched.current = false;
   }
 
   const handleClearAll = () => {
@@ -124,16 +120,6 @@ const SearchPage = () => {
   const handleFollow = (id) => {
     alert(`Followed`);
   }
-
-  const trendingTags = [
-    { tag: '#summertrends', posts: '12.5K posts today' },
-    { tag: '#foodie', posts: '8.3K posts today' },
-    { tag: '#traveldiary', posts: '6.7K posts today' },
-    { tag: '#beautytips', posts: '5.2K posts today' },
-  ];
-
-  const allTrendingTafs = '#summertrends #foodie #traveldiary #beautytips';//Example
-
 
   /**
      * Format date for display
@@ -171,52 +157,6 @@ const SearchPage = () => {
         </div>
         {/* Content area for search results */}
         <div className="contents-containers">
-          {/* Left side - Recent searches */}
-          <div className="recent-trending-container">
-            <h3 className="section-title">Recent Searches</h3>
-            {/* 加个列表 */}
-            <div className="recent-searches-list">
-              <ul>
-                {recentSearches.map((item, index) => (
-                  <li key={index} className="search-item">
-                    {typeof item === 'object' && item !== null && 'username' in item ? (
-                      <div className="user-search">
-                        <img
-                          src={item.avatar || 'https://via.placeholder.com/32'}
-                          alt="Avatar"
-                          className="avatar"
-                        />
-                        <span className="username">{item.username}</span>
-                      </div>
-                    ) : (
-                      <span>{item}</span>
-                    )}
-                    <button className="close-btn">✕</button>
-                  </li>
-                ))}
-              </ul>
-              <Button text="Clear All" type="secondary" onClick={handleClearAll}/>
-            </div>
-          </div>
-          {/* Right side - Trending Now */}
-          <div className="trending-now-container">
-            <h3 className="section-title">Trending Now</h3>
-            {/* 我感觉这是个tag，可能得弄一个map？ */}
-            <div className="trending-tags">
-              <ul>
-                {trendingTags.map((item, i) => (
-                  <li key={i}>
-                    <div>
-                      <strong>{item.tag}</strong>
-                      <div className="subtext">{item.posts}</div>
-                    </div>
-                    <Button text="View" type="secondary" onClick = {() => handleSearch(item.tag)}/>
-                  </li>
-                ))}
-              </ul>
-              <Button text="View All" onClick={() => handleSearch(allTrendingTafs)}/>
-            </div>
-          </div>
           <div className="history-container">
             <div className="content-area">
             {/* Content will appear here after search */}
