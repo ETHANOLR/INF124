@@ -1,64 +1,63 @@
 // components/PostModal/PostModal.js
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {Button} from '../buttons/buttons'
 import './PostModel.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:4000' : 'https://api.momento.lifestyle');
+
 const PostModal = ({ post, onClose }) => {
+  const [detailedPost, setDetailedPost] = useState(null);
   const [commentInput, setCommentInput] = useState('');
-  if (!post) return null;
 
+  useEffect(() => {
+    const fetchPostDetail = async () => {
+      if (!post?._id) return;
+      try {
+        console.log(`${API_BASE}/api/posts/${post._id}`);
+        const response = await fetch(`${API_BASE}/api/posts/${post._id}`);
+        const data = await response.json();
+        setDetailedPost(data);
+      } catch (err) {
+        console.error('Error loading detailed post:', err);
+      }
+    };
+    fetchPostDetail();
+  }, [post]);
 
-  const exampleComments = [
-    {
-      username: 'User1',
-      avatar: null, // or a URL like 'https://example.com/avatar1.png'
-      text: 'This is amazing! I love the composition and colors.',
-      time: '2h ago'
-    },
-    {
-      username: 'User2',
-      avatar: null,
-      text: 'Great post! Where was this taken?',
-      time: '1h ago'
-    },
-    {
-      username: 'TravelerJoe',
-      avatar: null,
-      text: 'I’ve been there too, unforgettable views.',
-      time: '30m ago'
-    },
-    {
-      username: 'FoodieQueen',
-      avatar: null,
-      text: 'This looks delicious 😍 What’s the recipe?',
-      time: '15m ago'
-    },
-    {
-      username: 'NatureLover',
-      avatar: null,
-      text: 'Such a peaceful spot. Thanks for sharing!',
-      time: '5m ago'
-    }
-  ];
+  if (!post || !detailedPost) return null;
 
-  const exampleTags = [
-    'travel',
-    'foodie',
-    'fashion',
-    'photography',
-    'nature',
-    'technology',
-    'lifestyle',
-    'fitness',
-    'style',
-    'trending'
-  ];
-
-  const getRandomTags = (count = 3) => {
-    const shuffled = [...exampleTags].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
+  const getDisplayName = () => {
+    return detailedPost.author?.profile?.displayName || detailedPost.author?.username || 'Unknown';
   };
-  
+
+  const getAvatar = () => {
+    return detailedPost.author?.profile?.profilePicture?.url || '';
+  };
+
+  // Formatting comment dates
+  const formatCommentDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+};
+
+  // Formatting Dates
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
 
   const handleFollowClicked = () => {
     alert('Followed');
@@ -85,30 +84,56 @@ const PostModal = ({ post, onClose }) => {
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-image-section">
           {/* Replace with real image */}
-          <div className="modal-thumbnail" />
-          <button className="modal-nav left">◀</button>
-          <button className="modal-nav right">▶</button>
+          {detailedPost.media?.images?.[0]?.url ? (
+            <img
+              src={detailedPost.media.images[0].url}
+              alt={detailedPost.title}
+              className="modal-thumbnail"
+            />
+          ) : (
+            <div className="modal-thumbnail-placeholder">No Image Available</div>
+          )}
         </div>
         <div className="modal-content-section">
             <div className="modal-scrollable">
+                <h2 className="post-title">{detailedPost.title}</h2>
                 <div className="modal-header">
-                    <div className = "user">
-                        <div className="avatar"/>
-                        <span className="username">{post.username}</span>
-                    </div>
-                    <Button className="follow-button" text = "follow" onClick = {() => handleFollowClicked()}/>
-                    <button className="close-button" onClick={onClose}>✕</button>
+                  <span className="post-category">{detailedPost.category}</span>
+                  <span className="post-date">{formatDate(detailedPost.createdAt)}</span>
                 </div>
-                <h2 className="post-title">{post.title}</h2>
-                <p className="post-detail">{post.details}</p>
-                <p className="post-time">2 hours age</p>
+                <div className = "user">
+                    <div className="avatar">
+                        {getAvatar() ? (
+                          <img
+                            src={getAvatar()}
+                            alt={getDisplayName()}
+                            style={{ borderRadius: '50%' }}
+                          />
+                        ) : (
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            height: '100%',
+                            backgroundColor: '#e0e0e0',
+                            borderRadius: '50%'
+                          }}>
+                            {detailedPost.author?.username?.[0]?.toUpperCase()}
+                          </div>
+                        )}
+                    </div>
+                    <span className="username">{getDisplayName()}</span>
+                    <Button className="follow-button" text = "follow" onClick = {() => handleFollowClicked()}/>
+                </div>
+                <p className="post-content">{detailedPost.content}</p>
                 <div className="tags">
-                    {(post.tags && post.tags.length ? post.tags : getRandomTags()).map(tag => (
-                        <span className="tag" key={tag}>#{tag}</span>
-                    ))}
+                    {detailedPost.tags?.map(tag => <span className="tag" key={tag}>#{tag}</span>)}
                 </div>
                 <div className="stats">
-                    {post.likes? post.likes:0} likes • {post.comments?post.comments.length:0} comments
+                    <span>{detailedPost.analytics?.views || 0} views</span>
+                    <span>{detailedPost.likesCount || 0} likes</span>
+                    <span>{detailedPost.commentsCount || 0} comments</span>
+                    <span>{detailedPost.sharesCount || 0} shares</span>
                 </div>
                 <div className="actions">
                     <Button text = 'Like' onClick={() => handleLikeClicked()} type = 'secondary'/>
@@ -116,22 +141,45 @@ const PostModal = ({ post, onClose }) => {
                     <Button text = 'Save' onClick={() => handleSave()} type = 'secondary'/>
                 </div>
 
-                <div className="comments">
-                    <h4>Comments</h4>
-                    <div className="comment-container">
-                        {(post.comments?.length ? post.comments : exampleComments).map((c, i) => (//Here is using example comment when comment data is not here
-                            <div className="comment" key={i}>
-                                <div className="comment-header">
-                                    <div className="comment-avatar"></div>
-                                    <div className="comment-content">
-                                        <div className="comment-username">{c.username}</div>
-                                        <div className="comment-text">{c.text}</div>
-                                        <div className="comment-subtext">{c.time} • Like • Reply</div>
+                {/* Comments list */}
+                <div className="comments-list">
+                    {detailedPost.engagement?.comments?.map((comment) => (
+                        <div key={comment.id || comment._id} className="comment-item">
+                            <div className="comment-header">
+                                <div className="comment-author">
+                                    <div className="comment-avatar">
+                                        {comment.user?.profile?.profilePicture?.url ? (
+                                            <img 
+                                                src={comment.user.profile.profilePicture.url}
+                                                alt={comment.user.username}
+                                            />
+                                        ) : (
+                                            <div className="avatar-placeholder">
+                                                {comment.user?.username?.[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="comment-meta">
+                                        <span className="comment-username">
+                                            {comment.user?.profile?.displayName || comment.user?.username}
+                                        </span>
+                                        <span className="comment-date">
+                                            {formatCommentDate(comment.createdAt)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                            <div className="comment-content">
+                                <p>{comment.content}</p>
+                            </div>
+                        </div>
+                    ))}
+                            
+                    {(!detailedPost.engagement?.comments || detailedPost.engagement.comments.length === 0) && (
+                        <div className="no-comments">
+                            <p>No comments yet. Be the first to comment!</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

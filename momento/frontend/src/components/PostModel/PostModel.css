@@ -128,10 +128,22 @@
     font-size: 12px;
   }
   
-  .stats {
-    margin-top: 10px;
-    color: #555;
-  }
+  /* Post statistics */
+.stats {
+  display: flex;
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
+}
+
+.stats span {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
   
   .actions {
     display: flex;

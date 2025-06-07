@@ -16,7 +16,6 @@ function useQuery() {
 
 const SearchPage = () => {
   const [searchCategory, setCategory] = useState('All');
-  const [recentSearches, setRecentSearches] = useState([]);
   // State for infinite scrolling
   const [results, setResults] = useState([]);
   const [page, setPage] = useState(1);
@@ -24,8 +23,7 @@ const SearchPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-
-
+  const [selectedPost, setSelectedPost] = useState(null);
 
   const query = useQuery();
   const searchParam = query.get('q');
@@ -92,17 +90,13 @@ const SearchPage = () => {
     console.log("search");
   };
 
-  const handlePostClick = (postId) => {
-    navigate(`/posts/${postId}`);
+  const handlePostClick = (post) => {
+    setSelectedPost(post);
   };
 
   const handleSearchCategory = (input) => {
     setCategory(input);
     setPage(1);
-  }
-
-  const handleClearAll = () => {
-    setRecentSearches([]);
   }
   
   const handleLike = (id) => {
@@ -173,7 +167,7 @@ const SearchPage = () => {
                           <div 
                               key={post._id || post.id} 
                               className="post-item"
-                              onClick={() => handlePostClick(post._id || post.id)}
+                              onClick={() => handlePostClick(post)}
                               style={{ cursor: 'pointer' }}
                           >
                               {/* Post thumbnail - use first image if available */}
@@ -236,15 +230,6 @@ const SearchPage = () => {
                                           <span className="search-username">
                                               {post.author?.profile?.displayName || post.author?.username}
                                           </span>
-                                          {/* 关注按钮 */}
-                                          {currentUser && currentUser.userId !== post.author._id && (
-                                              <button 
-                                                  className={`follow-btn-small ${post.author.isFollowedByUser ? 'following' : ''}`}
-                                                  onClick={(e) => handleFollow(e, post.author._id)}
-                                              >
-                                                  {post.author.isFollowedByUser ? 'Following' : 'Follow'}
-                                              </button>
-                                          )}
                                       </div>
                                   </div>
                                         
@@ -253,28 +238,6 @@ const SearchPage = () => {
                                       <span>{post.likesCount || 0} likes</span>
                                       <span>{post.commentsCount || 0} comments</span>
                                       <span>{post.analytics?.views || 0} views</span>
-                                  </div>
-                                        
-                                  {/* Action buttons */}
-                                  <div className="post-actions">
-                                      <button 
-                                          className={`action-button ${post.isLikedByUser ? 'liked' : ''}`}
-                                          onClick={(e) => handleLike(e, post._id || post.id)}
-                                      >
-                                          {post.isLikedByUser ? '❤️' : '🤍'} Like
-                                      </button>
-                                      <button 
-                                          className="action-button" 
-                                          onClick={(e) => handleComment(e, post._id || post.id)}
-                                      >
-                                          💬 Comment
-                                      </button>
-                                      <button 
-                                          className="action-button" 
-                                          onClick={(e) => handleShare(e, post._id || post.id)}
-                                      >
-                                          📤 Share
-                                      </button>
                                   </div>
                               </div>
                           </div>
@@ -294,6 +257,9 @@ const SearchPage = () => {
           </div>
         </div>
       </div>
+      {selectedPost && (
+        <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+      )}
     </div>
   );
 };
