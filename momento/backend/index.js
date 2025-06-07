@@ -469,9 +469,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// ===============================
 // API ENDPOINTS
-// ===============================
 
 // Test API endpoint to check database connection
 app.get('/api/TestDB', (req, res) => {
@@ -481,9 +479,7 @@ app.get('/api/TestDB', (req, res) => {
     });
 });
 
-// ===============================
 // USER AUTHENTICATION ENDPOINTS
-// ===============================
 
 // User registration endpoint
 app.post('/api/users', async (req, res) => {
@@ -648,9 +644,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// ===============================
 // POST ENDPOINTS
-// ===============================
 
 /**
  * GET /api/posts
@@ -1261,9 +1255,7 @@ app.post('/api/posts/upload-media', authenticateToken, postMediaUpload.array('me
     }
 });
 
-// ===============================
 // USER MANAGEMENT ENDPOINTS
-// ===============================
 
 // Get current user information
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
@@ -1709,9 +1701,7 @@ app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) 
     }
 });
 
-// ===============================
 // CHAT AND MESSAGING ENDPOINTS
-// ===============================
 
 // Get user's chats
 app.get('/api/chats', authenticateToken, async (req, res) => {
@@ -1879,10 +1869,8 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// ===============================
-// SERVER STARTUP
-// ===============================
 
+// SERVER STARTUP
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
