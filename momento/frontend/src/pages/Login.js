@@ -146,9 +146,12 @@ const Login = () => {
             // Clear form and errors
             setFormData({ email: '', password: '' });
             setErrors({});
-            
-            // Show success modal instead of direct navigation
-            setShowSuccessModal(true);
+
+            // redirect
+            navigate('/home');
+
+            // // Show success modal instead of direct navigation
+            // setShowSuccessModal(true);
             
         } catch (error) {
             console.error('Login error:', error);
