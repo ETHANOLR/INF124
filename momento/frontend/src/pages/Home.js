@@ -24,7 +24,7 @@ const API_CONFIG = {
  * API service for making HTTP requests to the backend
  */
 const apiService = {
-    async fetchPosts({ page = 1, limit = 10, category, sort = 'newest', search }) {
+    async fetchPosts({ page = 1, limit = 10, category, sort = 'newest', search, following }) {
         try {
             const queryParams = new URLSearchParams({
                 page: page.toString(),
@@ -38,6 +38,9 @@ const apiService = {
             }
             if (search) {
                 queryParams.append('search', search);
+            }
+            if (following) {
+                queryParams.append('following', 'true');
             }
 
             const url = `${API_CONFIG.BASE_URL}/api/posts?${queryParams}`;
@@ -168,12 +171,19 @@ const Home = () => {
         setError(null);
         
         try {
-            const response = await apiService.fetchPosts({
+            const requestParams = {
                 page: pageNumber,
                 limit: 10,
                 category: activeCategory === 'all' ? null : activeCategory,
                 sort: getTabSortMethod(activeTab)
-            });
+            };
+
+            // Add following filter for Following tab
+            if (activeTab === 'Following') {
+                requestParams.following = true;
+            }
+
+            const response = await apiService.fetchPosts(requestParams);
 
             const { posts: newPosts, pagination } = response;
             

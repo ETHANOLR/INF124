@@ -659,7 +659,8 @@ app.get('/api/posts', async (req, res) => {
             sort = 'newest',
             author,
             search,
-            city 
+            city,
+            following
         } = req.query;
 
         // Check for authentication token
@@ -681,6 +682,41 @@ app.get('/api/posts', async (req, res) => {
             'status.published': true,
             'status.isDeleted': false
         };
+
+        // Add following filter - only show posts from users that current user follows
+        if (following === 'true') {
+            if (!currentUserId) {
+                return res.status(401).json({ 
+                    message: 'Authentication required to view following feed' 
+                });
+            }
+
+            // Get current user's following list
+            const currentUser = await User.findById(currentUserId).select('relationships.following');
+            if (!currentUser) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            // Extract user IDs from following list
+            const followingUserIds = currentUser.relationships.following.map(follow => follow.user);
+            
+            // If user doesn't follow anyone, return empty results
+            if (followingUserIds.length === 0) {
+                return res.json({
+                    posts: [],
+                    pagination: {
+                        currentPage: parseInt(page),
+                        totalPages: 0,
+                        totalPosts: 0,
+                        hasNextPage: false,
+                        hasPrevPage: false
+                    }
+                });
+            }
+
+            // Add filter to only show posts from followed users
+            query.author = { $in: followingUserIds };
+        }
 
         // Add city filter
         if (city && city.trim()) {       
@@ -801,7 +837,7 @@ app.get('/api/posts', async (req, res) => {
         const totalPosts = await Post.countDocuments(query);
         const totalPages = Math.ceil(totalPosts / limitNum);
 
-        console.log(`Fetched ${posts.length} posts for page ${page}, category: ${category || 'all'}, sort: ${sort}`);
+        console.log(`Fetched ${posts.length} posts for page ${page}, category: ${category || 'all'}, sort: ${sort}, following: ${following || 'false'}`);
 
         res.json({
             posts,
