@@ -924,13 +924,15 @@ app.get('/api/search', async (req, res) => {
             orConditions.push({ tags: { $regex: queryText, $options: 'i' } });
         }
 
-        if (searchType === 'all' || searchType === 'place') {
+        if (searchType === 'all' || searchType === 'places') {
             orConditions.push({
                 $or: [
-                    { 'location.name': new RegExp(queryText, 'i') },
-                    { 'location.address.city': new RegExp(queryText, 'i') },
-                    { 'location.address.state': new RegExp(queryText, 'i') },
-                    { 'location.address.country': new RegExp(queryText, 'i') }
+                    { 'location.name': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.street': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.city': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.state': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.country': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.zipCode': { $regex: queryText, $options: 'i' } }
                 ]
             });
         }

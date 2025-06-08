@@ -132,6 +132,7 @@ const apiService = {
 };
 
 const PostModal = ({ post, onClose }) => {
+  console.log(`post clicked`);
   const navigate = useNavigate();
   const [detailedPost, setDetailedPost] = useState(null);
   const [commentInput, setCommentInput] = useState('');
@@ -142,10 +143,11 @@ const PostModal = ({ post, onClose }) => {
 
   useEffect(() => {
     const fetchPostDetail = async () => {
-      if (!post?._id) return;
+      console.log(`start fetching data of post: ${post}`);
+      if (!post?._id && !post?.id) return;
       try {
-        console.log(`${API_CONFIG}/api/posts/${post._id}`);
-        const data = await apiService.fetchPost(post._id);
+        console.log(`${API_CONFIG}/api/posts/${post._id || post.id}`);
+        const data = await apiService.fetchPost(post._id || post.id);
         setDetailedPost(data);
       } catch (err) {
         console.error('Error loading detailed post:', err);
