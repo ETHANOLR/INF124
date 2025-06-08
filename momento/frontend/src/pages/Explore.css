@@ -12,6 +12,33 @@
     gap: 20px;
 }
 
+/* Sidebar Styles */
+.sidebar {
+    width: 220px;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.sidebar-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #000000;
+}
+
+.feed-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #f2f2f2;
+    /* margin-bottom: -10px; */
+}
+
 .content-container {
     flex: 1;
     background: white;
@@ -20,11 +47,30 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.explore-sidebar-section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
 .explore-section {
     display: flex;
     flex: 1;
     flex-direction: column;
-    margin-bottom: 10px
+    margin-bottom: 10px;
+}
+
+.explore-feed {
+    flex: 1;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 100px);
+    overflow: hidden;
 }
 
 .explore-section-title {
@@ -70,6 +116,9 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s, box-shadow 0.2s;
     background-color: white;
+    flex: 1 1 0;
+    width: auto;
+    max-width: none;
 }
 
 .explore-post-thumbnail {
@@ -134,21 +183,114 @@
     justify-content: space-between;
 }
 
-.popular-post {
-    width: 400px;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
-    background-color: white;
-    transition: transform 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 10px;
-}
-
-
 .popular-post:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.explore-city-search-section {
+    margin-bottom: 0px;
+}
+
+.explore-city-search-bar {
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.explore-popular-cities {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.explore-popular-cities li {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+}
+  
+.explore-popular-cities button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 100%;
+    background: transparent;   
+    border: none;               
+    padding: 12px 16px;          
+    border-radius: 8px;    
+    cursor: pointer;
+    transition:
+        transform 0.15s ease,
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.explore-popular-cities .explore-city-name {
+    font-size: 14px;
+    color: #333;
+}
+.explore-popular-cities .explore-city-count {
+    font-size: 14px;
+    color: #7b7b7b;
+}
+
+.explore-popular-cities button:hover {
+    transform: scale(1.02);
+    background-color: #f5f5f5;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.explore-popular-cities button.active {
+    background-color: #ff6b61; 
+    color: white;
+}
+.explore-popular-cities button.active .explore-city-name,
+.explore-popular-cities button.active .explore-city-count {
+    color: white;
+}
+
+.explore-city-search-section .explore-suggestions {
+    margin: 0;
+    width: 83%;
+    position: absolute;
+    background: rgba(245, 245, 245, 0.977);
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    padding: 0;
+    list-style: none;
+    z-index: 100; 
+  }
+
+.explore-city-search-section .explore-suggestions li {
+    margin: 0;
+    padding: 8px 12px;
+    cursor: pointer;
+    box-shadow: none;
+  }
+
+.explore-city-search-section .explore-suggestions li:hover {
+    background-color: #d1d1d1;
+  }
+
+.explore-suggestions button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 100%;
+    background: transparent; 
+    border: none;      
+    border-radius: 8px;     
+    cursor: pointer;
 }
