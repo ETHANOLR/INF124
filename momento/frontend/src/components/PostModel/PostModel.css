@@ -232,3 +232,9 @@
     font-size: 13px;
     color: #777;
   }
+
+  .model-author-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
