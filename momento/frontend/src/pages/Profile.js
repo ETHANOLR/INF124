@@ -8,12 +8,16 @@ import CollectionCard from '../components/CollectionCard/CollectionCard';
 import { AuthContext } from '../contexts/AuthContext';
 
 /**
- * Profile Page Component with Real Data Integration
+ * Profile Page Component with Complete Liked Posts Functionality
  * 
- * Displays a user profile with their information, statistics, and posts.
- * Supports viewing both own profile and other users' profiles.
- * Features real data integration with backend API for posts, likes, and user interactions.
- * Enhanced with complete liked posts functionality.
+ * Features:
+ * - View user profiles (own and others)
+ * - Display user posts with pagination
+ * - Complete liked posts functionality with pagination
+ * - Follow/unfollow functionality
+ * - Real-time avatar synchronization
+ * - Responsive design
+ * - Error handling and loading states
  */
 const Profile = () => {
     const navigate = useNavigate();
@@ -47,10 +51,16 @@ const Profile = () => {
     const [likedPage, setLikedPage] = useState(1);
     const [hasMoreLikedPosts, setHasMoreLikedPosts] = useState(true);
     
+    // UI state for liked posts
+    const [likedPostsError, setLikedPostsError] = useState('');
+    const [unlikingPosts, setUnlikingPosts] = useState(new Set()); // Track posts being unliked
+    
     // Determine if this is the user's own profile
     const isOwnProfile = !username || (currentUser && username === currentUser.username);
     
-    // Set up axios interceptor for automatic authentication
+    /**
+     * Set up axios interceptor for automatic authentication
+     */
     useEffect(() => {
         const interceptor = axios.interceptors.request.use(
             (config) => {
@@ -69,7 +79,9 @@ const Profile = () => {
         };
     }, [authToken]);
 
-    // Main data fetching effect
+    /**
+     * Main data fetching effect - Load profile user
+     */
     useEffect(() => {
         if (isOwnProfile && currentUser) {
             setProfileUser(currentUser);
@@ -81,7 +93,10 @@ const Profile = () => {
         }
     }, [username, currentUser, isOwnProfile, navigate]);
 
-    // Real-time avatar synchronization
+    /**
+     * Real-time avatar synchronization
+     * Updates profile avatar when currentUser avatar changes
+     */
     useEffect(() => {
         if (isOwnProfile && currentUser && profileUser) {
             const currentAvatarUrl = currentUser.profile?.profilePicture?.url;
@@ -94,7 +109,9 @@ const Profile = () => {
         }
     }, [currentUser?.profile?.profilePicture?.url, isOwnProfile, profileUser]);
 
-    // Fetch content when profile user changes or tab changes
+    /**
+     * Fetch content when profile user changes or tab changes
+     */
     useEffect(() => {
         if (profileUser) {
             switch (activeTab) {
@@ -118,7 +135,9 @@ const Profile = () => {
         }
     }, [profileUser, activeTab]);
 
-    // Refresh current user data
+    /**
+     * Refresh current user data on component mount
+     */
     useEffect(() => {
         if (isOwnProfile && authToken) {
             refreshCurrentUserData();
@@ -204,7 +223,7 @@ const Profile = () => {
     };
 
     /**
-     * Fetch user's posts from API with real data
+     * Fetch user's posts from API with pagination
      */
     const fetchUserPosts = async (reset = false) => {
         try {
@@ -242,23 +261,33 @@ const Profile = () => {
     };
 
     /**
-     * Fetch user's liked posts (only for own profile) - ENHANCED
+     * Fetch user's liked posts with complete functionality
+     * Enhanced with better error handling and user feedback
      */
     const fetchLikedPosts = async (reset = false) => {
         if (!isOwnProfile) return;
         
         try {
             setLikedLoading(true);
+            setLikedPostsError(''); // Clear any previous errors
             
             const page = reset ? 1 : likedPage;
-            const response = await axios.get(
-                `${process.env.REACT_APP_API_BASE_URL}/api/users/me/liked-posts`, {
-                    params: {
-                        page: page,
-                        limit: 12
-                    }
+            const url = `${process.env.REACT_APP_API_BASE_URL}/api/users/me/liked-posts`;
+            
+            console.log('Fetching liked posts from:', url);
+            console.log('Auth token exists:', !!authToken);
+            console.log('Page:', page);
+            
+            const response = await axios.get(url, {
+                params: {
+                    page: page,
+                    limit: 12,
+                    sort: 'newest' // Can be 'newest', 'oldest', or 'popular'
+                },
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
                 }
-            );
+            });
 
             const { posts: fetchedPosts, pagination } = response.data;
             
@@ -272,12 +301,23 @@ const Profile = () => {
             setHasMoreLikedPosts(pagination.hasNextPage);
             setLikedPage(prev => reset ? 2 : prev + 1);
 
+            console.log(`Fetched ${fetchedPosts.length} liked posts for page ${page}`);
+
         } catch (error) {
             console.error('Error fetching liked posts:', error);
+            console.error('Error response:', error.response);
+            console.error('Error status:', error.response?.status);
+            console.error('Error data:', error.response?.data);
+            
             if (error.response?.status === 401) {
+                setLikedPostsError('Authentication expired. Please log in again.');
                 logout();
                 navigate('/login');
+            } else if (error.response?.status === 404) {
+                setLikedPostsError('Liked posts endpoint not found. Please check server configuration.');
+                console.error('404 Error: Endpoint /api/users/me/liked-posts not found');
             } else {
+                setLikedPostsError(`Failed to load liked posts: ${error.response?.data?.message || error.message}`);
                 setLikedPosts([]);
             }
         } finally {
@@ -335,7 +375,6 @@ const Profile = () => {
 
     /**
      * Handle post click - navigate to full post view
-     * FIXED: Now matches Home.js implementation exactly
      */
     const handlePostClick = (postId) => {
         navigate(`/posts/${postId}`);
@@ -369,15 +408,19 @@ const Profile = () => {
     };
 
     /**
-     * Handle unlike from liked posts tab - ENHANCED
+     * Handle unlike from liked posts tab with enhanced UX
+     * Provides immediate visual feedback and handles errors gracefully
      */
     const handleUnlikeFromLikedTab = async (postId) => {
         try {
+            // Add to unliking set for UI feedback
+            setUnlikingPosts(prev => new Set([...prev, postId]));
+
             await axios.post(
                 `${process.env.REACT_APP_API_BASE_URL}/api/posts/${postId}/like`
             );
 
-            // Remove the post from liked posts list
+            // Remove the post from liked posts list immediately
             setLikedPosts(prev => prev.filter(post => post.id !== postId));
 
             // Also update the main posts list if it contains this post
@@ -387,14 +430,31 @@ const Profile = () => {
                         ? { 
                             ...post, 
                             isLikedByUser: false,
-                            likesCount: post.likesCount - 1
+                            likesCount: Math.max(0, post.likesCount - 1)
                         }
                         : post
                 )
             );
 
+            console.log(`Successfully unliked post ${postId} from liked tab`);
+
         } catch (error) {
             console.error('Error unliking post from liked tab:', error);
+            
+            // Provide user feedback on error
+            setLikedPostsError('Failed to unlike post. Please try again.');
+            
+            // Clear error after 3 seconds
+            setTimeout(() => {
+                setLikedPostsError('');
+            }, 3000);
+        } finally {
+            // Remove from unliking set
+            setUnlikingPosts(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(postId);
+                return newSet;
+            });
         }
     };
 
@@ -408,14 +468,22 @@ const Profile = () => {
     };
 
     /**
-     * Load more liked posts - ENHANCED
+     * Load more liked posts with enhanced functionality
      */
     const loadMoreLikedPosts = () => {
         if (!likedLoading && hasMoreLikedPosts) {
             fetchLikedPosts(false);
         }
     };
-    
+
+    /**
+     * Refresh liked posts - useful for pull-to-refresh functionality
+     */
+    const refreshLikedPosts = () => {
+        setLikedPostsError('');
+        fetchLikedPosts(true);
+    };
+
     /**
      * Format numbers with K/M suffixes
      */
@@ -429,14 +497,19 @@ const Profile = () => {
     };
     
     /**
-     * Handle tab switching
+     * Handle tab switching with state reset
      */
     const handleTabClick = (tab) => {
         setActiveTab(tab);
+        
+        // Clear errors when switching tabs
+        if (tab === 'Liked') {
+            setLikedPostsError('');
+        }
     };
     
     /**
-     * Handle follow/unfollow
+     * Handle follow/unfollow with optimistic updates
      */
     const handleFollowClick = async () => {
         if (!currentUser) {
@@ -444,11 +517,26 @@ const Profile = () => {
             return;
         }
 
+        // Store previous states before try block for error recovery
+        const previousFollowState = isFollowing;
+        const previousFollowerCount = profileUser.stats.followersCount;
+
         try {
+            // Optimistic update
+            setIsFollowing(!isFollowing);
+            setProfileUser(prev => ({
+                ...prev,
+                stats: {
+                    ...prev.stats,
+                    followersCount: isFollowing ? prev.stats.followersCount - 1 : prev.stats.followersCount + 1
+                }
+            }));
+
             const response = await axios.post(
                 `${process.env.REACT_APP_API_BASE_URL}/api/users/${profileUser.id}/follow`
             );
 
+            // Update with actual server response
             setIsFollowing(response.data.following);
             
             // Update follower count
@@ -462,6 +550,16 @@ const Profile = () => {
 
         } catch (error) {
             console.error('Error updating follow status:', error);
+            
+            // Revert optimistic update on error
+            setIsFollowing(previousFollowState);
+            setProfileUser(prev => ({
+                ...prev,
+                stats: {
+                    ...prev.stats,
+                    followersCount: previousFollowerCount
+                }
+            }));
             
             if (error.response?.status === 401) {
                 logout();
@@ -505,65 +603,175 @@ const Profile = () => {
     };
 
     /**
-     * Render post item with real data - FIXED
-     * Now matches Home.js pattern for consistent navigation
+     * Render post item with enhanced functionality
+     * Supports both regular posts and posts from liked tab
      */
-    const renderPost = (post, isFromLikedTab = false) => (
-        <div 
-            className="post-item" 
-            key={post.id || post._id} 
-            onClick={() => handlePostClick(post.id || post._id)}
-            style={{ cursor: 'pointer' }}
-        >
-            <div className="post-image">
-                {post.media?.images?.length > 0 ? (
-                    <img 
-                        src={post.media.images[0].url} 
-                        alt={post.media.images[0].altText || post.title}
-                        onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                        }}
-                    />
+    const renderPost = (post, isFromLikedTab = false) => {
+        const postId = post.id || post._id;
+        const isUnliking = unlikingPosts.has(postId);
+        
+        return (
+            <div 
+                className={`post-item ${isUnliking ? 'post-unliking' : ''}`}
+                key={postId} 
+                onClick={() => handlePostClick(postId)}
+                style={{ cursor: 'pointer', opacity: isUnliking ? 0.7 : 1 }}
+            >
+                <div className="post-image">
+                    {post.media?.images?.length > 0 ? (
+                        <img 
+                            src={post.media.images[0].url} 
+                            alt={post.media.images[0].altText || post.title}
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                            }}
+                        />
+                    ) : (
+                        <div className="post-placeholder">
+                            📝
+                        </div>
+                    )}
+                </div>
+                
+                <div className="post-details">
+                    <p className="post-caption">
+                        {post.title || post.content?.substring(0, 100) + '...'}
+                    </p>
+                    <div className="post-stats">
+                        <span 
+                            className={post.isLikedByUser ? 'liked' : ''}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isFromLikedTab) {
+                                    // Handle unlike from liked tab
+                                    handleUnlikeFromLikedTab(postId);
+                                } else {
+                                    // Handle normal like/unlike
+                                    handlePostLike(postId, post.isLikedByUser);
+                                }
+                            }}
+                            style={{ 
+                                cursor: isUnliking ? 'not-allowed' : 'pointer',
+                                opacity: isUnliking ? 0.5 : 1
+                            }}
+                        >
+                            {isUnliking ? '⏳' : (post.isLikedByUser ? '❤️' : '🤍')} {formatNumber(post.likesCount || 0)}
+                        </span>
+                        <span>💬 {formatNumber(post.commentsCount || 0)}</span>
+                        <span>👁️ {formatNumber(post.analytics?.views || 0)}</span>
+                    </div>
+                    <div className="post-meta">
+                        <span className="post-category">{post.category}</span>
+                        <span className="post-date">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    /**
+     * Render liked posts tab with enhanced UI and error handling
+     */
+    const renderLikedPostsTab = () => {
+        return (
+            <div className="posts-grid">
+                {/* Error message */}
+                {likedPostsError && (
+                    <div className="error-message" style={{
+                        gridColumn: '1 / -1',
+                        textAlign: 'center',
+                        padding: '20px',
+                        backgroundColor: '#fee',
+                        border: '1px solid #fcc',
+                        borderRadius: '8px',
+                        color: '#d00',
+                        marginBottom: '20px'
+                    }}>
+                        <p>{likedPostsError}</p>
+                        <button 
+                            onClick={refreshLikedPosts}
+                            style={{
+                                marginTop: '10px',
+                                padding: '8px 16px',
+                                backgroundColor: '#ff6f61',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                )}
+
+                {likedPosts.length > 0 ? (
+                    <>
+                        {likedPosts.map(post => renderPost(post, true))}
+                        
+                        {/* Loading indicator for more posts */}
+                        {likedLoading && (
+                            <div className="loading-more">
+                                <div className="loading-spinner"></div>
+                                <p>Loading more liked posts...</p>
+                            </div>
+                        )}
+                        
+                        {/* Load more button */}
+                        {hasMoreLikedPosts && !likedLoading && (
+                            <button 
+                                className="load-more-button"
+                                onClick={loadMoreLikedPosts}
+                            >
+                                Load More Liked Posts
+                            </button>
+                        )}
+                        
+                        {/* End of posts message */}
+                        {!hasMoreLikedPosts && !likedLoading && likedPosts.length > 0 && (
+                            <div style={{
+                                gridColumn: '1 / -1',
+                                textAlign: 'center',
+                                padding: '20px',
+                                color: '#666',
+                                fontStyle: 'italic'
+                            }}>
+                                You've reached the end of your liked posts
+                            </div>
+                        )}
+                    </>
+                ) : likedLoading ? (
+                    <div className="empty-state">
+                        <div className="loading-spinner"></div>
+                        <p>Loading your liked posts...</p>
+                    </div>
                 ) : (
-                    <div className="post-placeholder">
-                        📝
+                    <div className="empty-state">
+                        <h3>No liked posts yet</h3>
+                        <p>Posts you like will appear here. Start exploring and liking posts!</p>
+                        <button 
+                            onClick={() => navigate('/home')}
+                            style={{
+                                marginTop: '15px',
+                                padding: '12px 24px',
+                                backgroundColor: '#ff6f61',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '25px',
+                                cursor: 'pointer',
+                                fontSize: '16px'
+                            }}
+                        >
+                            Explore Posts
+                        </button>
                     </div>
                 )}
             </div>
-            
-            <div className="post-details">
-                <p className="post-caption">
-                    {post.title || post.content?.substring(0, 100) + '...'}
-                </p>
-                <div className="post-stats">
-                    <span 
-                        className={post.isLikedByUser ? 'liked' : ''}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (isFromLikedTab) {
-                                // Handle unlike from liked tab
-                                handleUnlikeFromLikedTab(post.id || post._id);
-                            } else {
-                                // Handle normal like/unlike
-                                handlePostLike(post.id || post._id, post.isLikedByUser);
-                            }
-                        }}
-                    >
-                        {post.isLikedByUser ? '❤️' : '🤍'} {formatNumber(post.likesCount || 0)}
-                    </span>
-                    <span>💬 {formatNumber(post.commentsCount || 0)}</span>
-                    <span>👁️ {formatNumber(post.analytics?.views || 0)}</span>
-                </div>
-                <div className="post-meta">
-                    <span className="post-category">{post.category}</span>
-                    <span className="post-date">
-                        {new Date(post.createdAt).toLocaleDateString()}
-                    </span>
-                </div>
-            </div>
-        </div>
-    );
+        );
+    };
 
     // Loading state
     if (isLoading) {
@@ -836,39 +1044,8 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Liked Posts Tab - ENHANCED */}
-                    {activeTab === 'Liked' && isOwnProfile && (
-                        <div className="posts-grid">
-                            {likedPosts.length > 0 ? (
-                                <>
-                                    {likedPosts.map(post => renderPost(post, true))}
-                                    {likedLoading && (
-                                        <div className="loading-more">
-                                            <div className="loading-spinner"></div>
-                                        </div>
-                                    )}
-                                    {hasMoreLikedPosts && !likedLoading && (
-                                        <button 
-                                            className="load-more-button"
-                                            onClick={loadMoreLikedPosts}
-                                        >
-                                            Load More Liked Posts
-                                        </button>
-                                    )}
-                                </>
-                            ) : likedLoading ? (
-                                <div className="empty-state">
-                                    <div className="loading-spinner"></div>
-                                    <p>Loading liked posts...</p>
-                                </div>
-                            ) : (
-                                <div className="empty-state">
-                                    <h3>No liked posts yet</h3>
-                                    <p>Posts you like will appear here. Start exploring and liking posts!</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* Enhanced Liked Posts Tab */}
+                    {activeTab === 'Liked' && isOwnProfile && renderLikedPostsTab()}
 
                     {/* Tagged Posts Tab */}
                     {activeTab === 'Tagged' && isOwnProfile && (

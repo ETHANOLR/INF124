@@ -1713,6 +1713,118 @@ app.get('/api/users/:userId/follow-status', authenticateToken, async (req, res) 
     }
 });
 
+/**
+ * GET /api/users/me/liked-posts
+ * Get posts liked by the current user with pagination
+ */
+app.get('/api/users/me/liked-posts', authenticateToken, async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 12,
+            sort = 'newest'
+        } = req.query;
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+        const currentUserId = req.user.userId;
+
+        console.log(`Fetching liked posts for user: ${currentUserId}, page: ${pageNum}`);
+
+        // Build sort object
+        let sortObject = {};
+        switch (sort) {
+            case 'oldest':
+                sortObject = { 'engagement.likes.likedAt': 1 };
+                break;
+            case 'popular':
+                sortObject = { 'analytics.views': -1, 'engagement.likes.likedAt': -1 };
+                break;
+            default: // newest
+                sortObject = { 'engagement.likes.likedAt': -1 };
+        }
+
+        // Find posts that the current user has liked
+        const query = {
+            'engagement.likes.user': currentUserId,
+            'status.published': true,
+            'status.isDeleted': false
+        };
+
+        // Get posts with pagination
+        const posts = await Post.find(query)
+            .populate('author', 'username profile.profilePicture profile.displayName')
+            .sort(sortObject)
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        // Add user interaction states to each post
+        const enrichedPosts = posts.map(post => {
+            const postObj = { ...post };
+            
+            // Always true since these are posts the user has liked
+            postObj.isLikedByUser = true;
+            
+            // Check if user is following the author (simplified for now)
+            postObj.author.isFollowedByUser = false;
+            
+            return postObj;
+        });
+
+        // Get total count for pagination
+        const totalPosts = await Post.countDocuments(query);
+        const totalPages = Math.ceil(totalPosts / limitNum);
+
+        console.log(`Found ${enrichedPosts.length} liked posts for user ${currentUserId}, page ${pageNum}`);
+
+        res.json({
+            posts: enrichedPosts,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalPosts,
+                hasNextPage: pageNum < totalPages,
+                hasPrevPage: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Get liked posts error:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch liked posts',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+});
+
+/**
+ * GET /api/users/me/liked-posts/count
+ * Get count of posts liked by the current user
+ */
+app.get('/api/users/me/liked-posts/count', authenticateToken, async (req, res) => {
+    try {
+        const currentUserId = req.user.userId;
+        
+        const count = await Post.countDocuments({
+            'engagement.likes.user': currentUserId,
+            'status.published': true,
+            'status.isDeleted': false
+        });
+
+        res.json({ count });
+
+    } catch (error) {
+        console.error('Get liked posts count error:', error);
+        res.status(500).json({ 
+            message: 'Failed to get liked posts count',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+});
+
+
 // CHAT AND MESSAGING ENDPOINTS
 
 // Get user's chats
