@@ -424,6 +424,8 @@ const Home = () => {
      * Handle create post button click
      */
     const handleCreatePost = () => {
+        console.log('FAB clicked');
+        const token = localStorage.getItem('token');
         if (!currentUser) {
             navigate('/login');
             return;
@@ -582,80 +584,82 @@ const Home = () => {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="home-post-content">
                                         <h3 className="home-post-title">{post.title}</h3>
                                         <p className="home-post-details">
                                             {post.excerpt || post.content.substring(0, 150) + '...'}
                                         </p>
-                                        
+
                                         {/* Post metadata */}
                                         <div className="post-metadata">
                                             <span className="post-category">{post.category}</span>
                                             <span className="post-date">{formatDate(post.createdAt)}</span>
                                         </div>
-                                        
+
                                         {/* Author information */}
                                         <div className="post-user">
-                                            <div className="home-user-avatar">
-                                                {post.author?.profile?.profilePicture?.url ? (
-                                                    <img 
-                                                        src={post.author.profile.profilePicture.url}
-                                                        alt={post.author.username}
-                                                        style={{ width: '100%', height: '100%', borderRadius: '50%' }}
-                                                    />
-                                                ) : (
-                                                    <div style={{ 
-                                                        display: 'flex', 
-                                                        alignItems: 'center', 
-                                                        justifyContent: 'center',
-                                                        height: '100%',
-                                                        backgroundColor: '#e0e0e0',
-                                                        borderRadius: '50%'
-                                                    }}>
-                                                        {post.author?.username?.[0]?.toUpperCase()}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="author-info">
+                                            <div className="author-left">
+                                                <div className="home-user-avatar">
+                                                    {post.author?.profile?.profilePicture?.url ? (
+                                                        <img
+                                                            src={post.author.profile.profilePicture.url}
+                                                            alt={post.author.username}
+                                                            style={{width: '100%', height: '100%', borderRadius: '50%'}}
+                                                        />
+                                                    ) : (
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            width: '100%',
+                                                            height: '100%',
+                                                            backgroundColor: '#e0e0e0',
+                                                            borderRadius: '50%'
+                                                        }}>
+                                                            {post.author?.username?.[0]?.toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <span className="home-username">
-                                                    {post.author?.profile?.displayName || post.author?.username}
-                                                </span>
-                                                {/* 关注按钮 */}
-                                                {currentUser && currentUser.userId !== post.author._id && (
-                                                    <button 
-                                                        className={`follow-btn-small ${post.author.isFollowedByUser ? 'following' : ''}`}
-                                                        onClick={(e) => handleFollow(e, post.author._id)}
-                                                    >
-                                                        {post.author.isFollowedByUser ? 'Following' : 'Follow'}
-                                                    </button>
-                                                )}
+      {post.author?.profile?.displayName || post.author?.username}
+    </span>
                                             </div>
+
+                                            {/* Follow button (only show if not self) */}
+                                            {currentUser && currentUser.userId !== post.author._id && (
+                                                <button
+                                                    className={`follow-btn-small ${post.author.isFollowedByUser ? 'following' : ''}`}
+                                                    onClick={(e) => handleFollow(e, post.author._id)}
+                                                >
+                                                    {post.author.isFollowedByUser ? 'Following' : 'Follow'}
+                                                </button>
+                                            )}
                                         </div>
-                                        
+
                                         {/* Post statistics */}
                                         <div className="post-stats">
                                             <span>{post.likesCount || 0} likes</span>
                                             <span>{post.commentsCount || 0} comments</span>
                                             <span>{post.analytics?.views || 0} views</span>
                                         </div>
-                                        
+
                                         {/* Action buttons */}
                                         <div className="post-actions">
-                                            <button 
+                                            <button
                                                 className={`action-button ${post.isLikedByUser ? 'liked' : ''}`}
                                                 onClick={(e) => handleLike(e, post._id || post.id)}
                                             >
                                                 {post.isLikedByUser ? '❤️' : '🤍'} Like
                                             </button>
-                                            <button 
-                                                className="action-button" 
+                                            <button
+                                                className="action-button"
                                                 onClick={(e) => handleComment(e, post._id || post.id)}
                                             >
                                                 💬 Comment
                                             </button>
-                                            <button 
-                                                className="action-button" 
+                                            <button
+                                                className="action-button"
                                                 onClick={(e) => handleShare(e, post._id || post.id)}
                                             >
                                                 📤 Share
@@ -665,7 +669,7 @@ const Home = () => {
                                 </div>
                             ))}
                         </div>
-                        
+
                         {/* Show message when no posts are found */}
                         {!isLoading && posts.length === 0 && !error && (
                             <div className="no-posts-message">
@@ -676,7 +680,7 @@ const Home = () => {
                     </InfiniteScroll>
                 </div>
             </div>
-            
+
             {/* Floating action button for creating new posts */}
             <button className="fab" onClick={handleCreatePost}>+</button>
         </div>

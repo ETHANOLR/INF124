@@ -59,6 +59,28 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                setIsLoggedIn(true);
+                setAuthToken(token);
+                setCurrentUser({
+                    userId: payload.userId,
+                    username: payload.username,
+                    email: payload.email,
+                    profile: payload.profile || {},
+                    moderation: payload.moderation || {},
+                });
+                console.log('Auth restored from localStorage');
+            } catch (err) {
+                console.error('Failed to parse token from localStorage:', err);
+                logout(); // 清除无效 token
+            }
+        }
+    }, []);
+
     /**
      * Log authentication state changes for debugging
      */
@@ -87,7 +109,7 @@ export const AuthProvider = ({ children }) => {
             setIsLoggedIn(true);
             setCurrentUser(userData);
             setAuthToken(token);
-            
+            localStorage.setItem('token', token);
             console.log('User logged in successfully:', {
                 username: userData.username,
                 email: userData.email,
@@ -108,6 +130,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoggedIn(false);
         setCurrentUser(null);
         setAuthToken(null);
+        localStorage.removeItem('token');
         setSocketConnected(false);
         
         console.log('User logged out successfully - all data cleared');

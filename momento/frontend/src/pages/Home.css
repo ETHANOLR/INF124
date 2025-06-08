@@ -189,11 +189,15 @@
     color: #666;
     margin-bottom: 15px;
     line-height: 1.5;
+
+    height: 48px;               /* 固定高度（大约两行文字） */
+    overflow: hidden;           /* 隐藏超出部分 */
+    text-overflow: ellipsis;    /* 可选：加上省略号 */
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: hidden;
 }
+
 
 /* Post Metadata */
 .post-metadata {
