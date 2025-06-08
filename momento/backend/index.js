@@ -658,7 +658,8 @@ app.get('/api/posts', async (req, res) => {
             category,
             sort = 'newest',
             author,
-            search
+            search,
+            city 
         } = req.query;
 
         // Check for authentication token
@@ -680,6 +681,11 @@ app.get('/api/posts', async (req, res) => {
             'status.published': true,
             'status.isDeleted': false
         };
+
+        // Add city filter
+        if (city && city.trim()) {       
+            query['location.address.city'] = { $regex: `^${clean}$`, $options: 'i' };
+        }
 
         // Add category filter
         if (category && category !== 'all') {
@@ -814,6 +820,47 @@ app.get('/api/posts', async (req, res) => {
             message: 'Failed to fetch posts',
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
+    }
+});
+
+/**
+ * GET /api/posts/location-stats
+ * Get statistics of posts by location (city)
+ */
+app.get('/api/posts/location-stats', async (req, res) => {
+    try {
+      const stats = await Post.aggregate([
+        {
+          $match: {
+            'status.published': true,
+            'status.isDeleted': false,
+            'location.address.city': { 
+                $exists: true, 
+                $ne: null,
+                $ne: '' 
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$location.address.city',
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1, _id: 1 } },
+        {
+          $project: {
+            _id:     0,
+            city:    '$_id',
+            count:   1
+          }
+        }
+      ]);
+  
+      res.json(stats);
+    } catch (err) {
+      console.error('Error fetching location stats:', err);
+      res.status(500).json({ error: 'Server error' });
     }
 });
 
