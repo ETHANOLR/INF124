@@ -148,10 +148,10 @@ const Login = () => {
             setErrors({});
 
             // redirect
-            navigate('/home');
+            // navigate('/home');
 
-            // // Show success modal instead of direct navigation
-            // setShowSuccessModal(true);
+            // Show success modal instead of direct navigation
+            setShowSuccessModal(true);
             
         } catch (error) {
             console.error('Login error:', error);

@@ -8,16 +8,16 @@ import CollectionCard from '../components/CollectionCard/CollectionCard';
 import { AuthContext } from '../contexts/AuthContext';
 
 /**
- * Profile Page Component
+ * Profile Page Component with Real Data Integration
  * 
  * Displays a user profile with their information, statistics, and posts.
  * Supports viewing both own profile and other users' profiles.
- * Includes real data integration with backend API.
- * Features follow/unfollow functionality and settings access.
+ * Features real data integration with backend API for posts, likes, and user interactions.
+ * Enhanced with complete liked posts functionality.
  */
 const Profile = () => {
     const navigate = useNavigate();
-    const { username } = useParams(); // Extract username from URL parameters
+    const { username } = useParams();
     const { currentUser, authToken, logout, updateUser } = useContext(AuthContext);
     
     // Component state management
@@ -26,8 +26,26 @@ const Profile = () => {
     const [isFollowing, setIsFollowing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    
+    // Content state for different tabs
     const [posts, setPosts] = useState([]);
+    const [likedPosts, setLikedPosts] = useState([]);
+    const [taggedPosts, setTaggedPosts] = useState([]);
     const [collections, setCollections] = useState([]);
+    
+    // Loading states for each tab
+    const [postsLoading, setPostsLoading] = useState(false);
+    const [likedLoading, setLikedLoading] = useState(false);
+    const [taggedLoading, setTaggedLoading] = useState(false);
+    const [collectionsLoading, setCollectionsLoading] = useState(false);
+    
+    // Pagination state for posts
+    const [postsPage, setPostsPage] = useState(1);
+    const [hasMorePosts, setHasMorePosts] = useState(true);
+    
+    // Pagination state for liked posts
+    const [likedPage, setLikedPage] = useState(1);
+    const [hasMoreLikedPosts, setHasMoreLikedPosts] = useState(true);
     
     // Determine if this is the user's own profile
     const isOwnProfile = !username || (currentUser && username === currentUser.username);
@@ -46,63 +64,69 @@ const Profile = () => {
             }
         );
 
-        // Cleanup interceptor on component unmount
         return () => {
             axios.interceptors.request.eject(interceptor);
         };
     }, [authToken]);
 
-    // Main data fetching effect - handles initial load and user changes
+    // Main data fetching effect
     useEffect(() => {
         if (isOwnProfile && currentUser) {
-            // Use current user data for own profile with immediate sync
             setProfileUser(currentUser);
             setIsLoading(false);
         } else if (username) {
-            // Fetch other user's profile data from API
             fetchUserProfile(username);
         } else {
-            // No username and no current user - redirect to login
             navigate('/login');
         }
     }, [username, currentUser, isOwnProfile, navigate]);
 
-    // Real-time avatar synchronization effect
-    // Monitors currentUser's avatar changes and updates profile immediately
+    // Real-time avatar synchronization
     useEffect(() => {
         if (isOwnProfile && currentUser && profileUser) {
-            // Check if avatar URL has changed
             const currentAvatarUrl = currentUser.profile?.profilePicture?.url;
             const profileAvatarUrl = profileUser.profile?.profilePicture?.url;
             
             if (currentAvatarUrl !== profileAvatarUrl) {
-                console.log('Avatar change detected, updating profile:', {
-                    old: profileAvatarUrl,
-                    new: currentAvatarUrl
-                });
+                console.log('Avatar change detected, updating profile');
                 setProfileUser(currentUser);
             }
         }
     }, [currentUser?.profile?.profilePicture?.url, isOwnProfile, profileUser]);
 
-    // Fetch posts and collections when profile user changes
+    // Fetch content when profile user changes or tab changes
     useEffect(() => {
         if (profileUser) {
-            fetchUserPosts();
-            fetchUserCollections();
+            switch (activeTab) {
+                case 'Posts':
+                    fetchUserPosts(true);
+                    break;
+                case 'Collections':
+                    fetchUserCollections();
+                    break;
+                case 'Liked':
+                    if (isOwnProfile) {
+                        fetchLikedPosts(true);
+                    }
+                    break;
+                case 'Tagged':
+                    if (isOwnProfile) fetchTaggedPosts();
+                    break;
+                default:
+                    break;
+            }
         }
-    }, [profileUser]);
+    }, [profileUser, activeTab]);
 
-    // Initial data refresh for own profile to ensure latest information
+    // Refresh current user data
     useEffect(() => {
         if (isOwnProfile && authToken) {
             refreshCurrentUserData();
         }
-    }, []); // Run only once on component mount
+    }, []);
 
     /**
      * Fetch user profile data from API by username
-     * @param {string} usernameParam - Username to fetch profile for
      */
     const fetchUserProfile = async (usernameParam) => {
         try {
@@ -116,7 +140,6 @@ const Profile = () => {
             const userData = response.data;
             setProfileUser(userData);
 
-            // Check follow status if viewing another user's profile
             if (currentUser && userData.id !== currentUser.id) {
                 checkFollowStatus(userData.id);
             }
@@ -139,7 +162,6 @@ const Profile = () => {
 
     /**
      * Refresh current user data from API
-     * Ensures profile displays the most up-to-date information
      */
     const refreshCurrentUserData = async () => {
         if (!isOwnProfile || !authToken) return;
@@ -156,11 +178,7 @@ const Profile = () => {
             
             const userData = response.data;
             setProfileUser(userData);
-            
-            // Sync with AuthContext to maintain consistency
             updateUser(userData);
-            
-            console.log('Current user data refreshed:', userData);
             
         } catch (error) {
             console.error('Error refreshing user data:', error);
@@ -172,93 +190,234 @@ const Profile = () => {
     };
 
     /**
-     * Check if current user is following the profile user
-     * @param {string} userId - ID of the user to check follow status for
+     * Check follow status for other users
      */
     const checkFollowStatus = async (userId) => {
         try {
             const response = await axios.get(
                 `${process.env.REACT_APP_API_BASE_URL}/api/users/${userId}/follow-status`
             );
-            setIsFollowing(response.data.isFollowing);
+            setIsFollowing(response.data.following);
         } catch (error) {
             console.error('Error checking follow status:', error);
         }
     };
 
     /**
-     * Fetch user's posts from API
-     * Currently uses mock data - will be replaced with real API call
+     * Fetch user's posts from API with real data
      */
-    const fetchUserPosts = async () => {
+    const fetchUserPosts = async (reset = false) => {
         try {
-            // TODO: Implement posts API endpoint
-            // For now, using mock data for demonstration
-            const mockPosts = [
-                {
-                    id: 1,
-                    image: null,
-                    caption: 'Beautiful sunset captured during my evening walk',
-                    likes: 2500,
-                    comments: 120,
-                    createdAt: new Date()
-                },
-                {
-                    id: 2,
-                    image: null,
-                    caption: 'Trying out a new recipe for homemade pasta',
-                    likes: 1800,
-                    comments: 85,
-                    createdAt: new Date()
-                },
-                {
-                    id: 3,
-                    image: null,
-                    caption: 'Weekend hiking adventure in the mountains',
-                    likes: 3200,
-                    comments: 145,
-                    createdAt: new Date()
+            setPostsLoading(true);
+            
+            const page = reset ? 1 : postsPage;
+            const response = await axios.get(
+                `${process.env.REACT_APP_API_BASE_URL}/api/posts`, {
+                    params: {
+                        author: profileUser.id,
+                        page: page,
+                        limit: 12,
+                        sort: 'newest'
+                    }
                 }
-            ];
-            setPosts(mockPosts);
+            );
+
+            const { posts: fetchedPosts, pagination } = response.data;
+            
+            if (reset) {
+                setPosts(fetchedPosts);
+                setPostsPage(1);
+            } else {
+                setPosts(prev => [...prev, ...fetchedPosts]);
+            }
+            
+            setHasMorePosts(pagination.hasNextPage);
+            setPostsPage(prev => reset ? 2 : prev + 1);
+
         } catch (error) {
             console.error('Error fetching posts:', error);
+        } finally {
+            setPostsLoading(false);
         }
     };
 
     /**
-     * Fetch user's collections from API
-     * Currently uses mock data - will be replaced with real API call
+     * Fetch user's liked posts (only for own profile) - ENHANCED
+     */
+    const fetchLikedPosts = async (reset = false) => {
+        if (!isOwnProfile) return;
+        
+        try {
+            setLikedLoading(true);
+            
+            const page = reset ? 1 : likedPage;
+            const response = await axios.get(
+                `${process.env.REACT_APP_API_BASE_URL}/api/users/me/liked-posts`, {
+                    params: {
+                        page: page,
+                        limit: 12
+                    }
+                }
+            );
+
+            const { posts: fetchedPosts, pagination } = response.data;
+            
+            if (reset) {
+                setLikedPosts(fetchedPosts);
+                setLikedPage(1);
+            } else {
+                setLikedPosts(prev => [...prev, ...fetchedPosts]);
+            }
+            
+            setHasMoreLikedPosts(pagination.hasNextPage);
+            setLikedPage(prev => reset ? 2 : prev + 1);
+
+        } catch (error) {
+            console.error('Error fetching liked posts:', error);
+            if (error.response?.status === 401) {
+                logout();
+                navigate('/login');
+            } else {
+                setLikedPosts([]);
+            }
+        } finally {
+            setLikedLoading(false);
+        }
+    };
+
+    /**
+     * Fetch posts where user is tagged (only for own profile)
+     */
+    const fetchTaggedPosts = async () => {
+        if (!isOwnProfile) return;
+        
+        try {
+            setTaggedLoading(true);
+        
+            // TODO: Implement backend endpoint for tagged posts
+            // const response = await axios.get(
+            //     `${process.env.REACT_APP_API_BASE_URL}/api/users/me/tagged-posts`
+            // );
+            
+            // For now, show empty state
+            setTaggedPosts([]);
+            
+        } catch (error) {
+            console.error('Error fetching tagged posts:', error);
+            setTaggedPosts([]);
+        } finally {
+            setTaggedLoading(false);
+        }
+    };
+
+    /**
+     * Fetch user's collections
      */
     const fetchUserCollections = async () => {
         try {
-            // TODO: Implement collections API endpoint
-            // For now, using mock data for demonstration
-            const mockCollections = [
-                { id: 1, title: "Fashion Inspiration", posts: 32, isPrivate: false },
-                { id: 2, title: "Travel Bucket List", posts: 24, isPrivate: false },
-                { id: 3, title: "Healthy Recipes", posts: 45, isPrivate: false },
-                { id: 4, title: "Home Decor Ideas", posts: 18, isPrivate: true },
-                { id: 5, title: "Workout Routines", posts: 15, isPrivate: false },
-                { id: 6, title: "Photography Tips", posts: 28, isPrivate: false },
-                { id: 7, title: "Favorite Books", posts: 12, isPrivate: false },
-            ];
+            setCollectionsLoading(true);
             
-            // Filter private collections for non-own profiles
-            const filteredCollections = isOwnProfile 
-                ? mockCollections 
-                : mockCollections.filter(collection => !collection.isPrivate);
-                
-            setCollections(filteredCollections);
+            // TODO: Implement backend endpoint for collections
+            // const response = await axios.get(
+            //     `${process.env.REACT_APP_API_BASE_URL}/api/users/${profileUser.id}/collections`
+            // );
+            
+            // For now, show empty state since collections aren't implemented in backend
+            setCollections([]);
+            
         } catch (error) {
             console.error('Error fetching collections:', error);
+            setCollections([]);
+        } finally {
+            setCollectionsLoading(false);
+        }
+    };
+
+    /**
+     * Handle post click - navigate to full post view
+     * FIXED: Now matches Home.js implementation exactly
+     */
+    const handlePostClick = (postId) => {
+        navigate(`/posts/${postId}`);
+    };
+
+    /**
+     * Handle post like/unlike for regular posts
+     */
+    const handlePostLike = async (postId, isLiked) => {
+        try {
+            await axios.post(
+                `${process.env.REACT_APP_API_BASE_URL}/api/posts/${postId}/like`
+            );
+
+            // Update the post in the local state
+            setPosts(prevPosts => 
+                prevPosts.map(post => 
+                    post.id === postId 
+                        ? { 
+                            ...post, 
+                            isLikedByUser: !isLiked,
+                            likesCount: isLiked ? post.likesCount - 1 : post.likesCount + 1
+                        }
+                        : post
+                )
+            );
+
+        } catch (error) {
+            console.error('Error liking post:', error);
+        }
+    };
+
+    /**
+     * Handle unlike from liked posts tab - ENHANCED
+     */
+    const handleUnlikeFromLikedTab = async (postId) => {
+        try {
+            await axios.post(
+                `${process.env.REACT_APP_API_BASE_URL}/api/posts/${postId}/like`
+            );
+
+            // Remove the post from liked posts list
+            setLikedPosts(prev => prev.filter(post => post.id !== postId));
+
+            // Also update the main posts list if it contains this post
+            setPosts(prevPosts => 
+                prevPosts.map(post => 
+                    post.id === postId 
+                        ? { 
+                            ...post, 
+                            isLikedByUser: false,
+                            likesCount: post.likesCount - 1
+                        }
+                        : post
+                )
+            );
+
+        } catch (error) {
+            console.error('Error unliking post from liked tab:', error);
+        }
+    };
+
+    /**
+     * Load more posts when scrolling
+     */
+    const loadMorePosts = () => {
+        if (!postsLoading && hasMorePosts) {
+            fetchUserPosts(false);
+        }
+    };
+
+    /**
+     * Load more liked posts - ENHANCED
+     */
+    const loadMoreLikedPosts = () => {
+        if (!likedLoading && hasMoreLikedPosts) {
+            fetchLikedPosts(false);
         }
     };
     
     /**
-     * Format large numbers with K/M suffixes for better readability
-     * @param {number} num - Number to format
-     * @returns {string} - Formatted number string
+     * Format numbers with K/M suffixes
      */
     const formatNumber = (num) => {
         if (num >= 1000000) {
@@ -266,19 +425,18 @@ const Profile = () => {
         } else if (num >= 1000) {
             return (num / 1000).toFixed(1) + 'K';
         }
-        return num.toString();
+        return num?.toString() || '0';
     };
     
     /**
-     * Handle content tab switching
-     * @param {string} tab - Tab name to switch to
+     * Handle tab switching
      */
     const handleTabClick = (tab) => {
         setActiveTab(tab);
     };
     
     /**
-     * Handle follow/unfollow button click with optimistic updates
+     * Handle follow/unfollow
      */
     const handleFollowClick = async () => {
         if (!currentUser) {
@@ -287,22 +445,18 @@ const Profile = () => {
         }
 
         try {
-            const endpoint = isFollowing ? 'unfollow' : 'follow';
-            await axios.post(
-                `${process.env.REACT_APP_API_BASE_URL}/api/users/${profileUser.id}/${endpoint}`
+            const response = await axios.post(
+                `${process.env.REACT_APP_API_BASE_URL}/api/users/${profileUser.id}/follow`
             );
 
-            // Update follow status immediately
-            setIsFollowing(!isFollowing);
+            setIsFollowing(response.data.following);
             
-            // Update follower count locally for immediate feedback
+            // Update follower count
             setProfileUser(prev => ({
                 ...prev,
                 stats: {
                     ...prev.stats,
-                    followersCount: isFollowing 
-                        ? prev.stats.followersCount - 1 
-                        : prev.stats.followersCount + 1
+                    followersCount: response.data.followersCount
                 }
             }));
 
@@ -317,7 +471,7 @@ const Profile = () => {
     };
   
     /**
-     * Handle message button click - navigate to chat
+     * Handle message button click
      */
     const handleMessageClick = () => {
         if (!currentUser) {
@@ -325,8 +479,6 @@ const Profile = () => {
             return;
         }
         
-        // TODO: Implement messaging functionality
-        // For now, navigate to chat page with recipient data
         navigate('/chat', { 
             state: { 
                 recipientUser: profileUser 
@@ -335,16 +487,14 @@ const Profile = () => {
     };
     
     /**
-     * Navigate to settings page (only for own profile)
+     * Navigate to settings
      */
     const handleSettingsClick = () => {
         navigate('/settings');
     };
 
     /**
-     * Format join date for display
-     * @param {string} dateString - ISO date string
-     * @returns {string} - Formatted date string
+     * Format join date
      */
     const formatJoinDate = (dateString) => {
         const date = new Date(dateString);
@@ -354,7 +504,68 @@ const Profile = () => {
         });
     };
 
-    // Loading state display
+    /**
+     * Render post item with real data - FIXED
+     * Now matches Home.js pattern for consistent navigation
+     */
+    const renderPost = (post, isFromLikedTab = false) => (
+        <div 
+            className="post-item" 
+            key={post.id || post._id} 
+            onClick={() => handlePostClick(post.id || post._id)}
+            style={{ cursor: 'pointer' }}
+        >
+            <div className="post-image">
+                {post.media?.images?.length > 0 ? (
+                    <img 
+                        src={post.media.images[0].url} 
+                        alt={post.media.images[0].altText || post.title}
+                        onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                    />
+                ) : (
+                    <div className="post-placeholder">
+                        📝
+                    </div>
+                )}
+            </div>
+            
+            <div className="post-details">
+                <p className="post-caption">
+                    {post.title || post.content?.substring(0, 100) + '...'}
+                </p>
+                <div className="post-stats">
+                    <span 
+                        className={post.isLikedByUser ? 'liked' : ''}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isFromLikedTab) {
+                                // Handle unlike from liked tab
+                                handleUnlikeFromLikedTab(post.id || post._id);
+                            } else {
+                                // Handle normal like/unlike
+                                handlePostLike(post.id || post._id, post.isLikedByUser);
+                            }
+                        }}
+                    >
+                        {post.isLikedByUser ? '❤️' : '🤍'} {formatNumber(post.likesCount || 0)}
+                    </span>
+                    <span>💬 {formatNumber(post.commentsCount || 0)}</span>
+                    <span>👁️ {formatNumber(post.analytics?.views || 0)}</span>
+                </div>
+                <div className="post-meta">
+                    <span className="post-category">{post.category}</span>
+                    <span className="post-date">
+                        {new Date(post.createdAt).toLocaleDateString()}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+
+    // Loading state
     if (isLoading) {
         return (
             <div className="profile-container">
@@ -367,7 +578,7 @@ const Profile = () => {
         );
     }
 
-    // Error state display
+    // Error state
     if (error) {
         return (
             <div className="profile-container">
@@ -383,7 +594,7 @@ const Profile = () => {
         );
     }
 
-    // Profile not found state
+    // Profile not found
     if (!profileUser) {
         return (
             <div className="profile-container">
@@ -401,21 +612,17 @@ const Profile = () => {
   
     return (
         <div className="profile-container">
-            {/* Main Navigation Bar */}
             <Navbar />
             
-            {/* Profile Content Container */}
             <div className="profile-content">
-                {/* User Information Header Section */}
+                {/* Profile Header */}
                 <div className="profile-header">
-                    {/* Settings Button - Only visible for own profile */}
                     {isOwnProfile && (
                         <button className="settings-button" onClick={handleSettingsClick}>
                             ⚙️ Settings
                         </button>
                     )}
                     
-                    {/* Profile Avatar with Real-time Sync */}
                     <div className="profile-avatar">
                         {profileUser.profile?.profilePicture?.url ? (
                             <img 
@@ -423,7 +630,6 @@ const Profile = () => {
                                 alt={`${profileUser.username}'s profile`}
                                 className="avatar-image"
                                 onError={(e) => {
-                                    // Fallback to placeholder if image fails to load
                                     e.target.style.display = 'none';
                                     e.target.nextSibling.style.display = 'flex';
                                 }}
@@ -435,9 +641,7 @@ const Profile = () => {
                         )}
                     </div>
 
-                    {/* Profile Information Section */}
                     <div className="profile-info">
-                        {/* Username and Verification Badge */}
                         <div className="profile-name-container">
                             <h1 className="profile-username">{profileUser.username}</h1>
                             {profileUser.account?.isVerified && (
@@ -445,19 +649,16 @@ const Profile = () => {
                             )}
                         </div>
                         
-                        {/* Display Name (if different from username) */}
                         {profileUser.profile?.displayName && (
                             <h2 className="profile-display-name">
                                 {profileUser.profile.displayName}
                             </h2>
                         )}
                         
-                        {/* User Bio */}
                         {profileUser.profile?.bio && (
                             <p className="profile-bio">{profileUser.profile.bio}</p>
                         )}
                     
-                        {/* Profile Metadata (Location, Join Date, Website) */}
                         <div className="profile-meta">
                             {profileUser.profile?.location && (
                                 <span>📍 {profileUser.profile.location}</span>
@@ -483,7 +684,6 @@ const Profile = () => {
                             )}
                         </div>
                         
-                        {/* Profile Statistics */}
                         <div className="profile-stats">
                             <div className="stat-item">
                                 <span className="stat-value">
@@ -507,7 +707,6 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        {/* Action Buttons - Only show for other users' profiles */}
                         {!isOwnProfile && currentUser && (
                             <div className="profile-actions">
                                 <button 
@@ -525,7 +724,7 @@ const Profile = () => {
                     </div>
                 </div>
                 
-                {/* Content Navigation Tabs */}
+                {/* Content Tabs */}
                 <div className="profile-tabs">
                     <button 
                         className={`tab-button ${activeTab === 'Posts' ? 'active' : ''}`}
@@ -543,7 +742,6 @@ const Profile = () => {
                         Collections
                     </button>
 
-                    {/* Own Profile Exclusive Tabs */}
                     {isOwnProfile && (
                         <>
                             <button 
@@ -565,33 +763,33 @@ const Profile = () => {
                     )}
                 </div>
                 
-                {/* Content Display Area */}
+                {/* Tab Content */}
                 <div className="tab-content">
-                    {/* Posts Tab Content */}
+                    {/* Posts Tab */}
                     {activeTab === 'Posts' && (
                         <div className="posts-grid">
                             {posts.length > 0 ? (
-                                posts.map(post => (
-                                    <div className="post-item" key={post.id}>
-                                        <div className="post-image">
-                                            {post.image ? (
-                                                <img src={post.image} alt="Post" />
-                                            ) : (
-                                                <div className="post-placeholder">
-                                                    📷
-                                                </div>
-                                            )}
+                                <>
+                                    {posts.map(post => renderPost(post, false))}
+                                    {postsLoading && (
+                                        <div className="loading-more">
+                                            <div className="loading-spinner"></div>
                                         </div>
-                                        
-                                        <div className="post-details">
-                                            <p className="post-caption">{post.caption}</p>
-                                            <div className="post-stats">
-                                                <span>❤️ {formatNumber(post.likes)}</span>
-                                                <span>💬 {formatNumber(post.comments)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
+                                    )}
+                                    {hasMorePosts && !postsLoading && (
+                                        <button 
+                                            className="load-more-button"
+                                            onClick={loadMorePosts}
+                                        >
+                                            Load More Posts
+                                        </button>
+                                    )}
+                                </>
+                            ) : postsLoading ? (
+                                <div className="empty-state">
+                                    <div className="loading-spinner"></div>
+                                    <p>Loading posts...</p>
+                                </div>
                             ) : (
                                 <div className="empty-state">
                                     <h3>No posts yet</h3>
@@ -606,10 +804,15 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Collections Tab Content */}
+                    {/* Collections Tab */}
                     {activeTab === 'Collections' && (
                         <div className="posts-grid">
-                            {collections.length > 0 ? (
+                            {collectionsLoading ? (
+                                <div className="empty-state">
+                                    <div className="loading-spinner"></div>
+                                    <p>Loading collections...</p>
+                                </div>
+                            ) : collections.length > 0 ? (
                                 collections.map(collection => (
                                     <div className="post-item" key={collection.id}>
                                         <CollectionCard 
@@ -621,11 +824,11 @@ const Profile = () => {
                                 ))
                             ) : (
                                 <div className="empty-state">
-                                    <h3>No collections yet</h3>
+                                    <h3>Collections feature coming soon</h3>
                                     <p>
                                         {isOwnProfile 
-                                            ? "Create your first collection!" 
-                                            : "This user hasn't created any collections yet."
+                                            ? "Collections will allow you to organize your favorite posts into themed groups."
+                                            : "This user will be able to create collections soon."
                                         }
                                     </p>
                                 </div>
@@ -633,57 +836,54 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Liked Posts Tab - Only for own profile */}
+                    {/* Liked Posts Tab - ENHANCED */}
                     {activeTab === 'Liked' && isOwnProfile && (
                         <div className="posts-grid">
-                            {posts.length > 0 ? (
-                                posts.map(post => (
-                                    <div className="post-item" key={`liked-${post.id}`}>
-                                        <div className="post-image">
-                                            <div className="post-placeholder">📷</div>
+                            {likedPosts.length > 0 ? (
+                                <>
+                                    {likedPosts.map(post => renderPost(post, true))}
+                                    {likedLoading && (
+                                        <div className="loading-more">
+                                            <div className="loading-spinner"></div>
                                         </div>
-                                        
-                                        <div className="post-details">
-                                            <p className="post-caption">{post.caption}</p>
-                                            <div className="post-stats">
-                                                <span>❤️ {formatNumber(Math.floor(Math.random() * 9000) + 1000)}</span>
-                                                <span>💬 {formatNumber(Math.floor(Math.random() * 180) + 20)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
+                                    )}
+                                    {hasMoreLikedPosts && !likedLoading && (
+                                        <button 
+                                            className="load-more-button"
+                                            onClick={loadMoreLikedPosts}
+                                        >
+                                            Load More Liked Posts
+                                        </button>
+                                    )}
+                                </>
+                            ) : likedLoading ? (
+                                <div className="empty-state">
+                                    <div className="loading-spinner"></div>
+                                    <p>Loading liked posts...</p>
+                                </div>
                             ) : (
                                 <div className="empty-state">
                                     <h3>No liked posts yet</h3>
-                                    <p>Posts you like will appear here.</p>
+                                    <p>Posts you like will appear here. Start exploring and liking posts!</p>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* Tagged Posts Tab - Only for own profile */}
+                    {/* Tagged Posts Tab */}
                     {activeTab === 'Tagged' && isOwnProfile && (
                         <div className="posts-grid">
-                            {posts.length > 0 ? (
-                                posts.map(post => (
-                                    <div className="post-item" key={`tagged-${post.id}`}>
-                                        <div className="post-image">
-                                            <div className="post-placeholder">📷</div>
-                                        </div>
-                                        
-                                        <div className="post-details">
-                                            <p className="post-caption">{post.caption}</p>
-                                            <div className="post-stats">
-                                                <span>❤️ {formatNumber(Math.floor(Math.random() * 9000) + 1000)}</span>
-                                                <span>💬 {formatNumber(Math.floor(Math.random() * 180) + 20)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
+                            {taggedLoading ? (
+                                <div className="empty-state">
+                                    <div className="loading-spinner"></div>
+                                    <p>Loading tagged posts...</p>
+                                </div>
+                            ) : taggedPosts.length > 0 ? (
+                                taggedPosts.map(post => renderPost(post, false))
                             ) : (
                                 <div className="empty-state">
-                                    <h3>No tagged posts yet</h3>
-                                    <p>Posts you're tagged in will appear here.</p>
+                                    <h3>Tagged posts feature coming soon</h3>
+                                    <p>Posts you're tagged in will appear here once this feature is fully implemented.</p>
                                 </div>
                             )}
                         </div>

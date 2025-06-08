@@ -1,4 +1,4 @@
-/* Profile.css */
+/* Profile.css - Updated with Real Data Support */
 .profile-container {
     display: flex;
     flex-direction: column;
@@ -32,6 +32,20 @@
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 20px;
+}
+
+.loading-more {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+.loading-more .loading-spinner {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 0;
 }
 
 @keyframes spin {
@@ -426,12 +440,66 @@
     display: flex;
     gap: 16px;
     font-weight: 500;
+    margin-bottom: 8px;
 }
 
 .post-stats span {
     display: flex;
     align-items: center;
     gap: 4px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.post-stats span:hover {
+    color: #ff6f61;
+}
+
+.post-stats span.liked {
+    color: #ff6f61;
+}
+
+.post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #adb5bd;
+}
+
+.post-category {
+    background-color: #ff6f61;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.post-date {
+    font-style: italic;
+}
+
+/* Load More Button */
+.load-more-button {
+    grid-column: 1 / -1;
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 16px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 20px auto;
+    display: block;
+}
+
+.load-more-button:hover {
+    background-color: #e05a4d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 111, 97, 0.3);
 }
 
 /* Empty State */
@@ -455,6 +523,69 @@
     color: #6c757d;
     margin: 0;
     font-size: 16px;
+    line-height: 1.5;
+}
+
+/* Collection Card Styles */
+.collection-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.collection-header {
+    padding: 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #ff6f61, #ff8a50);
+    color: white;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.collection-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.collection-count {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.collection-privacy {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Feature Coming Soon States */
+.coming-soon {
+    text-align: center;
+    padding: 60px 20px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+}
+
+.coming-soon h3 {
+    color: #6c757d;
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.coming-soon p {
+    color: #adb5bd;
+    font-size: 14px;
     line-height: 1.5;
 }
 
@@ -694,11 +825,14 @@
         gap: 32px;
     }
 }
+
+/* Focus and Accessibility */
 .settings-button:focus-visible,
 .follow-button:focus-visible,
 .message-button:focus-visible,
 .tab-button:focus-visible,
-.post-item:focus-visible {
+.post-item:focus-visible,
+.load-more-button:focus-visible {
     outline: 2px solid #ff6f61;
     outline-offset: 2px;
 }
