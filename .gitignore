@@ -14,6 +14,7 @@ momento/node_modules/
 .idea/
 /momento/frontend/build/
 /momento/backend/uploads/avatars
+/momento/backend/uploads/posts
 
 # misc
 .DS_Store
