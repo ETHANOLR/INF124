@@ -902,27 +902,39 @@ app.get('/api/search', async (req, res) => {
         }
 
         const seen = new Set();
-        const combinedPosts = [];
+        const combinedPostIds = []; //Previous: const combinedPosts = [];
 
         for (const post of [...textResults, ...fallbackResults]) {
             const id = post._id.toString();
             if (!seen.has(id)) {
                 seen.add(id);
-                combinedPosts.push(post);
+                combinedPostIds.push(id); //Previous: combinedPosts.push(post);
             }
         }
 
-        console.log('Number of posts found:', combinedPosts.length);
+        // 🧠 Fetch full enriched post objects by ID //Note: Addition for user interactive data (start)
+        const enrichedPosts = await Promise.all(
+            combinedPostIds.map(async (id) => {
+                const post = await Post.findById(id)
+                    .populate('author', 'username profile.profilePicture profile.displayName');
+                return post?.toJSON();
+            })
+        );
+
+        const finalPosts = enrichedPosts.filter(p => p);
+        //Note: Addition for user interactive data (end)
+
+        console.log('Number of posts found:', finalPosts.length); //Previous: console.log('Number of posts found:', combinedPosts.length);
 
         res.json({
             query: queryText,
             type: searchType,
             results: {
-                posts: combinedPosts
+                posts: finalPosts //Previous: posts: combinedPosts
             },
             pagination: {
                 currentPage: pageNum,
-                hasNextPage: combinedPosts.length >= limitNum
+                hasNextPage: finalPosts.length >= limitNum //Previous: hasNextPage: combinedPosts.length >= limitNum
             }
         });
 
