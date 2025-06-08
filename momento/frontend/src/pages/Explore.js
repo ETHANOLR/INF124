@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/NavBar/navBar';
 import './Explore.css';
 import PostModal from '../components/PostModel/PostModel';
@@ -22,9 +23,7 @@ const api = axios.create({
 const apiService = {
   async fetchPosts({ page = 1, limit = 10, city }) {
     try {
-
-      const params = { page, limit, city:city };
-      // const params = { page, limit };
+      const params = { page, limit, city: city };
 
       // 在单次调用里注入 Authorization 头
       const token = localStorage.getItem('token');
@@ -36,13 +35,8 @@ const apiService = {
       const response = await api.get(`/api/posts`, {
         params, headers
       });
-
-      // const response = await api.get('/api/posts', {
-      //   params, headers
-      // });
       
       console.log("Posts fetched:", response.data);
-
       return response.data;
 
     } catch (error) {
@@ -50,13 +44,69 @@ const apiService = {
       throw error;
     }
   },
+
+  /**
+   * Follow or unfollow a user
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} API response
+   */
+  async toggleFollow(userId) {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const url = `${API_CONFIG.BASE_URL}/api/users/${userId}/follow`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get current user information
+   * @returns {Promise<Object>} Current user data
+   */
+  async getCurrentUser() {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return null;
+      }
+
+      const response = await api.get('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      return null;
+    }
+  }
 };
 
 const normalize = s => s.trim().split(/\s+/)
   .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
-
 const Explore = () => {
+  const navigate = useNavigate();
 
   const [city, setCity] = useState("Irvine");
   const [posts, setPosts] = useState([]);
@@ -67,6 +117,55 @@ const Explore = () => {
   const [locationStats, setLocationStats] = useState([]); 
   const [searchInput, setSearchInput] = useState(''); 
   const [suggestions, setSuggestions] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Get current user on component mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const user = await apiService.getCurrentUser();
+      setCurrentUser(user);
+    };
+    
+    fetchCurrentUser();
+  }, []);
+
+  /**
+   * Handle follow button click
+   */
+  const handleFollow = async (e, userId) => {
+    e.stopPropagation();
+    
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const result = await apiService.toggleFollow(userId);
+      
+      // Update the specific post's author in the state
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.author._id === userId 
+            ? { 
+                ...post, 
+                author: {
+                  ...post.author,
+                  isFollowedByUser: result.following,
+                  followersCount: result.followersCount
+                }
+              }
+            : post
+        )
+      );
+      
+    } catch (error) {
+      console.error('Error following user:', error);
+      if (error.message.includes('Authentication required')) {
+        navigate('/login');
+      }
+    }
+  };
 
   const loadPosts = useCallback(async (pageNumber = 1, reset = false) => {
     if (isLoading) return;
@@ -75,40 +174,35 @@ const Explore = () => {
     setError(null);
     
     try {
-        const response = await apiService.fetchPosts({
-          page: pageNumber,
-          limit: 10,
-          city,
-        });
+      const response = await apiService.fetchPosts({
+        page: pageNumber,
+        limit: 10,
+        city,
+      });
 
-        const { posts: newPosts, pagination } = response;
-        
-        if (reset) {
-            setPosts(newPosts);
-        } else {
-            setPosts(prevPosts => [...prevPosts, ...newPosts]);
-        }
-
-        // console.log("Posts loaded:", newPosts);
-        // console.log("pagination:", pagination);
-        
-        setHasMore(pagination.hasNextPage);
-        setPage(pageNumber);
-        
+      const { posts: newPosts, pagination } = response;
+      
+      if (reset) {
+        setPosts(newPosts);
+      } else {
+        setPosts(prevPosts => [...prevPosts, ...newPosts]);
+      }
+      
+      setHasMore(pagination.hasNextPage);
+      setPage(pageNumber);
+      
     } catch (error) {
-        console.error('Error loading posts:', error);
-        setError('Failed to load posts. Please try again.');
+      console.error('Error loading posts:', error);
+      setError('Failed to load posts. Please try again.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [isLoading, city]);
 
-
   const loadMorePosts = useCallback(async () => {
-      if (hasMore && !isLoading) {
-          // console.log("Call loaded:", page + 1);
-          await loadPosts(page + 1, false);
-      }
+    if (hasMore && !isLoading) {
+      await loadPosts(page + 1, false);
+    }
   }, [hasMore, isLoading, page, loadPosts]);
 
   // get location stats
@@ -159,10 +253,10 @@ const Explore = () => {
   };
 
   return (
-    <div className = "explore-main-container">
+    <div className="explore-main-container">
       
       <Navbar />
-      <div className = "explore-main-content">
+      <div className="explore-main-content">
 
         {/* Side bar searching/choosing interested location */}
         <div className="sidebar">
@@ -179,9 +273,7 @@ const Explore = () => {
               />
 
               {suggestions.length > 0 && (
-                <ul
-                  className='explore-suggestions'
-                >
+                <ul className='explore-suggestions'>
                   {suggestions.map(({ city: loc }) => (
                     <li key={loc}>
                       <button
@@ -209,7 +301,6 @@ const Explore = () => {
                   >
                     <span className="explore-city-name">{loc}</span>
                     <span className="explore-city-count">{count}</span>
-                    {/* {loc} ({count}) */}
                   </button>
                 </li>
               ))}
@@ -217,43 +308,26 @@ const Explore = () => {
           </div>
         </div>
 
-        <div className = "content-container">
+        <div className="content-container">
           {/* Explore Section */}
-          <h3 className = "feed-title">Explore in {city}</h3>
-          {/* <div className = "explore-section">
-          </div> */}
-          
-          {/* <div className = "explore-section">
-            
-            <h4 className = "explore-section-title">Featured</h4>
-            <div className = "popular-post-container">
-                <PostCard 
-                  postData={posts.at(0)}
-                />
-                <PostCard 
-                  postData={posts.at(1)}
-                  />
-              <div className="explore-post-thumbnail"></div>
-              <div className="explore-post-content"></div>
-                
-            </div>
-          </div> */}
-          {/* <h4 className = "explore-section-title">Popular Today</h4> */}
+          <h3 className="feed-title">Explore in {city}</h3>
 
-          <div className = "explore-feed">
-            {/* Popular Today*/}
+          <div className="explore-feed">
             {/* Infinite scroll container */}
             <InfiniteScroll
-                loadMore={loadMorePosts}
-                hasMore={hasMore}
-                isLoading={isLoading}
-                loader={<div className="posts-loader">Loading more posts...</div>}
-                endMessage={<p className="posts-end-message">You've seen all posts!</p>}
+              loadMore={loadMorePosts}
+              hasMore={hasMore}
+              isLoading={isLoading}
+              loader={<div className="posts-loader">Loading more posts...</div>}
+              endMessage={<p className="posts-end-message">You've seen all posts!</p>}
             >
               <div className="post-grid">
                 {posts.map((post) => (
                   <PostCard 
+                    key={post._id || post.id}
                     postData={post}
+                    currentUser={currentUser}
+                    onFollow={handleFollow}
                   />
                 ))}
               </div>
