@@ -3,7 +3,7 @@ import './PostCard.css';
 import { Button } from '../buttons/buttons';
 import { useNavigate } from 'react-router-dom';
 
-function PostCard({ postData }) {
+function PostCard({ postData, currentUser, onFollow }) {
   const navigate = useNavigate();
 
   const post = postData;
@@ -78,30 +78,42 @@ function PostCard({ postData }) {
             </div>
             
             {/* Author information */}
-            <div className="postcard-user">
-                <div className="postcard-user-avatar">
-                    {post.author?.profile?.profilePicture?.url ? (
-                        <img 
-                            src={post.author.profile.profilePicture.url}
-                            alt={post.author.username}
-                            style={{ width: '100%', height: '100%', borderRadius: '50%' }}
-                        />
-                    ) : (
-                        <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            height: '100%',
-                            backgroundColor: '#e0e0e0',
-                            borderRadius: '50%'
-                        }}>
-                            {post.author?.username?.[0]?.toUpperCase()}
-                        </div>
-                    )}
+            <div className="post-user">
+                <div className="author-left">
+                    <div className="postcard-user-avatar">
+                        {post.author?.profile?.profilePicture?.url ? (
+                            <img 
+                                src={post.author.profile.profilePicture.url}
+                                alt={post.author.username}
+                                style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                            />
+                        ) : (
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                height: '100%',
+                                backgroundColor: '#e0e0e0',
+                                borderRadius: '50%'
+                            }}>
+                                {post.author?.username?.[0]?.toUpperCase()}
+                            </div>
+                        )}
+                    </div>
+                    <span className="postcard-username">
+                        {post.author?.profile?.displayName || post.author?.username}
+                    </span>
                 </div>
-                <span className="postcard-username">
-                    {post.author?.profile?.displayName || post.author?.username}
-                </span>
+
+                {/* Follow button (only show if not self and onFollow is provided) */}
+                {currentUser && onFollow && currentUser.userId !== post.author._id && (
+                    <button
+                        className={`follow-btn-small ${post.author.isFollowedByUser ? 'following' : ''}`}
+                        onClick={(e) => onFollow(e, post.author._id)}
+                    >
+                        {post.author.isFollowedByUser ? 'Following' : 'Follow'}
+                    </button>
+                )}
             </div>
             
             {/* Post statistics */}

@@ -1,6 +1,5 @@
 // frontend/src/pages/Home.js
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
@@ -72,40 +71,6 @@ const apiService = {
     },
 
     /**
-     * Like or unlike a post
-     * @param {string} postId - Post ID
-     * @returns {Promise<Object>} API response
-     */
-    async toggleLike(postId) {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-
-            const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/like`;
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error toggling like:', error);
-            throw error;
-        }
-    },
-
-    /**
      * Follow or unfollow a user
      * @param {string} userId - User ID
      * @returns {Promise<Object>} API response
@@ -137,42 +102,6 @@ const apiService = {
             console.error('Error toggling follow:', error);
             throw error;
         }
-    },
-
-    /**
-     * Share a post
-     * @param {string} postId - Post ID
-     * @param {string} shareType - Type of share ('repost', 'story', 'direct_message', 'external')
-     * @returns {Promise<Object>} API response
-     */
-    async sharePost(postId, shareType = 'repost') {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-
-            const url = `${API_CONFIG.BASE_URL}/api/posts/${postId}/share`;
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ shareType }),
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error sharing post:', error);
-            throw error;
-        }
     }
 };
 
@@ -182,7 +111,7 @@ const apiService = {
  * Main landing page that displays a feed of posts based on user preferences.
  * Posts are loaded in batches as the user scrolls down the page.
  * Features a sidebar with navigation tabs and category filters.
- * Includes a grid-based post layout with interaction buttons.
+ * Uses PostCard component for consistent post display.
  * Has a floating action button for creating new posts.
  */
 const Home = () => {
@@ -300,48 +229,6 @@ const Home = () => {
     };
 
     /**
-     * Handle post click - navigate to post detail page
-     */
-    const handlePostClick = (postId) => {
-        navigate(`/posts/${postId}`);
-    };
-
-    /**
-     * Handle like button click
-     */
-    const handleLike = async (e, postId) => {
-        e.stopPropagation();
-        
-        if (!currentUser) {
-            navigate('/login');
-            return;
-        }
-
-        try {
-            const result = await apiService.toggleLike(postId);
-            
-            // Update the specific post in the state
-            setPosts(prevPosts => 
-                prevPosts.map(post => 
-                    post._id === postId 
-                        ? { 
-                            ...post, 
-                            likesCount: result.likesCount,
-                            isLikedByUser: result.liked 
-                          }
-                        : post
-                )
-            );
-            
-        } catch (error) {
-            console.error('Error liking post:', error);
-            if (error.message.includes('Authentication required')) {
-                navigate('/login');
-            }
-        }
-    };
-
-    /**
      * Handle follow button click
      */
     const handleFollow = async (e, userId) => {
@@ -380,47 +267,6 @@ const Home = () => {
     };
 
     /**
-     * Handle comment button click
-     */
-    const handleComment = (e, postId) => {
-        e.stopPropagation();
-        navigate(`/posts/${postId}#comments`);
-    };
-
-    /**
-     * Handle share button click
-     */
-    const handleShare = async (e, postId) => {
-        e.stopPropagation();
-        
-        if (!currentUser) {
-            navigate('/login');
-            return;
-        }
-
-        try {
-            await apiService.sharePost(postId, 'repost');
-            
-            // Update the specific post in the state
-            setPosts(prevPosts => 
-                prevPosts.map(post => 
-                    post._id === postId 
-                        ? { ...post, sharesCount: (post.sharesCount || 0) + 1 }
-                        : post
-                )
-            );
-            
-            alert('Post shared successfully!');
-            
-        } catch (error) {
-            console.error('Error sharing post:', error);
-            if (error.message.includes('Authentication required')) {
-                navigate('/login');
-            }
-        }
-    };
-
-    /**
      * Handle create post button click
      */
     const handleCreatePost = () => {
@@ -431,20 +277,6 @@ const Home = () => {
             return;
         }
         navigate('/create-post');
-    };
-
-    /**
-     * Format date for display
-     */
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-        
-        if (diffInHours < 1) return 'Just now';
-        if (diffInHours < 24) return `${diffInHours}h ago`;
-        if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-        return date.toLocaleDateString();
     };
 
     return (
@@ -557,116 +389,12 @@ const Home = () => {
                     >
                         <div className="post-grid">
                             {posts.map((post) => (
-                                <div 
-                                    key={post._id || post.id} 
-                                    className="post-item"
-                                    onClick={() => handlePostClick(post._id || post.id)}
-                                    style={{ cursor: 'pointer' }}
-                                >
-                                    {/* Post thumbnail - use first image if available */}
-                                    <div className="home-post-thumbnail">
-                                        {post.media?.images?.[0]?.url ? (
-                                            <img 
-                                                src={post.media.images[0].url} 
-                                                alt={post.media.images[0].altText || post.title}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            />
-                                        ) : (
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'center',
-                                                height: '100%',
-                                                backgroundColor: '#f0f0f0',
-                                                color: '#999'
-                                            }}>
-                                                {post.category}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="home-post-content">
-                                        <h3 className="home-post-title">{post.title}</h3>
-                                        <p className="home-post-details">
-                                            {post.excerpt || post.content.substring(0, 150) + '...'}
-                                        </p>
-
-                                        {/* Post metadata */}
-                                        <div className="post-metadata">
-                                            <span className="post-category">{post.category}</span>
-                                            <span className="post-date">{formatDate(post.createdAt)}</span>
-                                        </div>
-
-                                        {/* Author information */}
-                                        <div className="post-user">
-                                            <div className="author-left">
-                                                <div className="home-user-avatar">
-                                                    {post.author?.profile?.profilePicture?.url ? (
-                                                        <img
-                                                            src={post.author.profile.profilePicture.url}
-                                                            alt={post.author.username}
-                                                            style={{width: '100%', height: '100%', borderRadius: '50%'}}
-                                                        />
-                                                    ) : (
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            width: '100%',
-                                                            height: '100%',
-                                                            backgroundColor: '#e0e0e0',
-                                                            borderRadius: '50%'
-                                                        }}>
-                                                            {post.author?.username?.[0]?.toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <span className="home-username">
-      {post.author?.profile?.displayName || post.author?.username}
-    </span>
-                                            </div>
-
-                                            {/* Follow button (only show if not self) */}
-                                            {currentUser && currentUser.userId !== post.author._id && (
-                                                <button
-                                                    className={`follow-btn-small ${post.author.isFollowedByUser ? 'following' : ''}`}
-                                                    onClick={(e) => handleFollow(e, post.author._id)}
-                                                >
-                                                    {post.author.isFollowedByUser ? 'Following' : 'Follow'}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* Post statistics */}
-                                        <div className="post-stats">
-                                            <span>{post.likesCount || 0} likes</span>
-                                            <span>{post.commentsCount || 0} comments</span>
-                                            <span>{post.analytics?.views || 0} views</span>
-                                        </div>
-
-                                        {/* Action buttons */}
-                                        <div className="post-actions">
-                                            <button
-                                                className={`action-button ${post.isLikedByUser ? 'liked' : ''}`}
-                                                onClick={(e) => handleLike(e, post._id || post.id)}
-                                            >
-                                                {post.isLikedByUser ? '❤️' : '🤍'} Like
-                                            </button>
-                                            <button
-                                                className="action-button"
-                                                onClick={(e) => handleComment(e, post._id || post.id)}
-                                            >
-                                                💬 Comment
-                                            </button>
-                                            <button
-                                                className="action-button"
-                                                onClick={(e) => handleShare(e, post._id || post.id)}
-                                            >
-                                                📤 Share
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <PostCard
+                                    key={post._id || post.id}
+                                    postData={post}
+                                    currentUser={currentUser}
+                                    onFollow={handleFollow}
+                                />
                             ))}
                         </div>
 

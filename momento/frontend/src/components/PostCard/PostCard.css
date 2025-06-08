@@ -123,7 +123,7 @@
 .postcard-user {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     margin-bottom: 10px;
     padding: 8px 0;
 }
@@ -140,20 +140,20 @@
     font-weight: 600;
     color: #666;
     flex-shrink: 0;
+    margin-right: 10px;
 }
 
 .postcard-username {
     font-size: 14px;
     color: #333;
     font-weight: 500;
-    margin-left: 10px;
 }
 
 /* Post Statistics */
 .postcard-stats {
     width: 100%;
     display: flex;
-    /* gap: 15px; */
+    gap: 15px;
     margin-bottom: 0px;
     padding: 10px 0;
     border-top: 1px solid #f0f0f0;
@@ -161,11 +161,9 @@
 }
 
 .postcard-stats span {
-    width: 100%;
     font-size: 12px;
     color: #666;
     font-weight: 500;
-    text-align: center
 }
 
 .post-user {
@@ -175,11 +173,13 @@
     height: 40px;
     margin-top: 8px;
     margin-bottom: 12px;
+    width: 100%;
 }
 
 .author-left {
     display: flex;
     align-items: center;
+    flex: 1;
 }
 
 .avatar {
@@ -211,7 +211,30 @@
     background-color: #999;
 }
 
-.follow-btn-small.following {
-    background-color: #aaa;
+.follow-btn-small {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
-  
+
+.follow-btn-small:hover {
+    background-color: #e05a4d;
+    transform: translateY(-1px);
+}
+
+.follow-btn-small.following {
+    background-color: #e0e0e0;
+    color: #666;
+}
+
+.follow-btn-small.following:hover {
+    background-color: #ffcccc;
+    color: #ff6f61;
+}
