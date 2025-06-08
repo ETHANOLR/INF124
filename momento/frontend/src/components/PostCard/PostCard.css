@@ -1,80 +1,169 @@
-.post-card {
-    width: 260px;
-    background: white;
+.postcard {
+    min-width: 260px;
+    flex: 1 1 333px;
     border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    padding-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: white;
+    border: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
-  
-.post-thumbnail {
-    height: 150px;
+
+.postcard:hover{
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+}
+
+.postcard-thumbnail {
+    /* padding-top: 56.25%;
     background: #eee;
     border-radius: 8px;
-    margin: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 12px 12px 0;
+    position: relative;
+    overflow: hidden; */
+
+    height: 180px;
+    background-color: #f8f9fa;
+    position: relative;
     overflow: hidden;
 }
-  
-.thumbnail-img {
+
+.postcard-thumbnail img{
+    /* position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;   */
+
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-  
-.default-thumbnail {
-    width: 100%;
-    height: 100%;
-    background-color: #ddd;
+    transition: transform 0.3s ease;
 }
 
-.post-info {
-    padding: 0 12px;
+
+
+/* Post Content */
+.postcard-content {
+    padding: 20px;
+    text-align: left;
+    justify-content: start;
+    align-items: start;
+    justify-items: start;
 }
-  
-.post-title {
-    font-size: 16px;
+
+.postcard-title {
+    font-size: 20px;
     font-weight: 600;
-    margin: 0;
+    margin-bottom: 8px;
+    color: #000000;
+    line-height: 1.4;
+    height: 50px;
+    display: -webkit-box;
+    /* -webkit-line-clamp: 2; */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
-  
-.post-detail {
-    font-size: 13px;
-    color: #777;
-    margin: 4px 0 10px;
+
+.postcard-details {
+    font-size: 14px;
+    color: #242424;
+    margin-bottom: 15px;
+    line-height: 1.5;
+    display: -webkit-box; 
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 0px 0px;
 }
-  
-.post-user {
+
+/* Post Metadata */
+.postcard-metadata {
+    width: 100%;
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 15px;
+    font-size: 12px;
 }
-  
-.avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: #ddd;
-    margin-right: 10px;
-}
-  
-.default-avatar {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: #ccc;
-}
-  
-.username {
-    font-size: 14px;
+
+.postcard-category {
+    background-color: #ff6f61;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-  
-.post-actions {
+
+.postcard-date {
+    color: #999;
+    font-weight: 400;
+}
+
+
+.postcard-info {
+    padding: 0 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.postcard-actions {
     display: flex;
     justify-content: space-between;
     gap: 6px;
+    padding: 0 12px;
+    width: 100%;
+    box-sizing: border-box;
 }
   
+
+.postcard-user {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 10px;
+    padding: 8px 0;
+}
+
+.postcard-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #666;
+    flex-shrink: 0;
+}
+
+.postcard-username {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    margin-left: 10px;
+}
+
+/* Post Statistics */
+.postcard-stats {
+    width: 100%;
+    display: flex;
+    /* gap: 15px; */
+    margin-bottom: 0px;
+    padding: 10px 0;
+    border-top: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.postcard-stats span {
+    width: 100%;
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+    text-align: center
+}
