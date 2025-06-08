@@ -261,6 +261,7 @@ postSchema.index({ 'engagement.likes.user': 1 });
 postSchema.index({ 'analytics.views': -1 });
 postSchema.index({ 'seo.slug': 1 });
 postSchema.index({ 'settings.visibility': 1 });
+postSchema.index({ 'location.address.city': 1 });
 
 // Text search index for content discovery
 postSchema.index({
