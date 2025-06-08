@@ -818,6 +818,122 @@ app.get('/api/posts', async (req, res) => {
 });
 
 /**
+ * GET /api/search
+ * Generalized search across posts, users, tags, and places
+ */
+app.get('/api/search', async (req, res) => {
+    try {
+        const { q, type = 'all', page = 1, limit = 10 } = req.query;
+
+        if (!q || !q.trim()) {
+            return res.status(400).json({ message: 'Query cannot be empty' });
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+        const queryText = q.trim();
+        const searchType = type.toLowerCase();
+
+        const baseFilter = {
+            'status.published': true,
+            'status.isDeleted': false
+        };
+
+        let textResults = [], fallbackResults = [];
+
+        // Run $text search if allowed
+        if (searchType === 'all' || searchType === 'posts') {
+            textResults = await Post.find({
+                ...baseFilter,
+                $text: { $search: queryText }
+            })
+                .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+                .select({ score: { $meta: 'textScore' }, title: 1, content: 1, category: 1, tags: 1, author: 1, createdAt: 1, media: 1, location: 1 })
+                .populate('author', 'username profile.profilePicture profile.displayName')
+                .skip(skip)
+                .limit(limitNum)
+                .lean();
+        }
+
+        // Build fallback $or conditions
+        const orConditions = [];
+
+        if (searchType === 'all' || searchType === 'users') {
+            const matchedUsers = await User.find({
+                $or: [
+                    { username: new RegExp(queryText, 'i') },
+                    { 'profile.displayName': new RegExp(queryText, 'i') }
+                ]
+            }).select('_id').lean();
+
+            const userIds = matchedUsers.map(u => u._id);
+            if (userIds.length > 0) {
+                orConditions.push({ author: { $in: userIds } });
+            }
+        }
+
+        if (searchType === 'all' || searchType === 'tags') {
+            orConditions.push({ tags: { $regex: queryText, $options: 'i' } });
+        }
+
+        if (searchType === 'all' || searchType === 'place') {
+            orConditions.push({
+                $or: [
+                    { 'location.name': new RegExp(queryText, 'i') },
+                    { 'location.address.city': new RegExp(queryText, 'i') },
+                    { 'location.address.state': new RegExp(queryText, 'i') },
+                    { 'location.address.country': new RegExp(queryText, 'i') }
+                ]
+            });
+        }
+
+        if (orConditions.length > 0) {
+            fallbackResults = await Post.find({
+                ...baseFilter,
+                $or: orConditions
+            })
+                .sort({ createdAt: -1 })
+                .select('title content category tags author createdAt media location')
+                .populate('author', 'username profile.profilePicture profile.displayName')
+                .skip(skip)
+                .limit(limitNum)
+                .lean();
+        }
+
+        const seen = new Set();
+        const combinedPosts = [];
+
+        for (const post of [...textResults, ...fallbackResults]) {
+            const id = post._id.toString();
+            if (!seen.has(id)) {
+                seen.add(id);
+                combinedPosts.push(post);
+            }
+        }
+
+        console.log('Number of posts found:', combinedPosts.length);
+
+        res.json({
+            query: queryText,
+            type: searchType,
+            results: {
+                posts: combinedPosts
+            },
+            pagination: {
+                currentPage: pageNum,
+                hasNextPage: combinedPosts.length >= limitNum
+            }
+        });
+
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).json({ message: 'Search failed' });
+    }
+});
+
+
+/**
  * POST /api/posts
  * Create a new post
  */
@@ -1773,6 +1889,7 @@ server.listen(PORT, () => {
     console.log('- POST /api/chats (create chat)');
     console.log('- GET /api/chats/:chatId/messages (get messages)');
     console.log('- GET /api/posts (get posts with pagination)');
+    console.log('- GET /api/search (get posts by search query with pagination')
     console.log('- POST /api/posts (create post)');
     console.log('- GET /api/posts/:id (get specific post)');
     console.log('- POST /api/posts/:id/like (like/unlike post)');
