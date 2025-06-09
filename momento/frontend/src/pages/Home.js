@@ -1,6 +1,6 @@
-// frontend/src/pages/Home.js - Improved Version
+// frontend/src/pages/Home.js
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
 import SearchBar from '../components/SearchBar/searchBar';
@@ -11,8 +11,10 @@ import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
 
 /**
  * Configuration for API endpoints
+ * This automatically detects if we're in development or production
  */
 const API_CONFIG = {
+    // Use environment variable if available, otherwise detect based on hostname
     BASE_URL: process.env.REACT_APP_API_URL || 
               (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
                 ? 'http://localhost:4000' 
@@ -31,6 +33,7 @@ const apiService = {
                 sort
             });
 
+            // Add optional parameters if they exist
             if (category && category !== 'all') {
                 queryParams.append('category', category);
             }
@@ -42,7 +45,7 @@ const apiService = {
             }
 
             const url = `${API_CONFIG.BASE_URL}/api/posts?${queryParams}`;
-            console.log('Fetching posts from:', url);
+            console.log('Fetching posts from:', url); // Debug log
             
             const headers = {
                 'Content-Type': 'application/json',
@@ -71,6 +74,11 @@ const apiService = {
         }
     },
 
+    /**
+     * Follow or unfollow a user
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} API response
+     */
     async toggleFollow(userId) {
         try {
             const token = localStorage.getItem('token');
@@ -102,49 +110,41 @@ const apiService = {
 };
 
 /**
- * Home Page Component - Improved with better layout handling
+ * Home Page
+ * 
+ * Main landing page that displays a feed of posts based on user preferences.
+ * Posts are loaded in batches as the user scrolls down the page.
+ * Features a sidebar with navigation tabs and category filters.
+ * Uses PostCard component for consistent post display.
+ * Has a floating action button for creating new posts.
  */
 const Home = () => {
     const navigate = useNavigate();
     
-    // UI state
+    // UI state for tabs and filters
     const [activeTab, setActiveTab] = useState('For You');
     const [activeCategory, setActiveCategory] = useState('all');
     
-    // Data state
+    // Data state for posts and pagination
     const [posts, setPosts] = useState([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
+
+    //For using Post Model;
     const [selectedPost, setSelectedPost] = useState(null);
 
-    // Categories configuration
-    const categories = useMemo(() => [
-        'all', 'Fashion', 'Travel', 'Food', 'Beauty', 
-        'Lifestyle', 'Technology', 'Sports'
-    ], []);
-
-    // Tabs configuration
-    const tabs = useMemo(() => [
-        'For You', 'Following', 'Trending'
-    ], []);
-
-    // Get current user info
+    // 获取当前用户信息
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
             try {
                 const tokenData = JSON.parse(atob(token.split('.')[1]));
-                setCurrentUser({ 
-                    userId: tokenData.userId, 
-                    username: tokenData.username 
-                });
+                setCurrentUser({ userId: tokenData.userId, username: tokenData.username });
             } catch (e) {
                 console.error('Error parsing token:', e);
-                // Clear invalid token
-                localStorage.removeItem('token');
             }
         }
     }, []);
@@ -152,18 +152,18 @@ const Home = () => {
     /**
      * Map tab names to API sort parameters
      */
-    const getTabSortMethod = useCallback((tab) => {
+    const getTabSortMethod = (tab) => {
         switch (tab) {
             case 'For You':
                 return 'newest';
             case 'Following':
-                return 'newest';
+                return 'newest'; // Could be modified to filter by followed users
             case 'Trending':
                 return 'trending';
             default:
                 return 'newest';
         }
-    }, []);
+    };
 
     /**
      * Load posts from the API
@@ -177,46 +177,43 @@ const Home = () => {
         try {
             const requestParams = {
                 page: pageNumber,
-                limit: 12, // Increased for better grid layout
+                limit: 10,
                 category: activeCategory === 'all' ? null : activeCategory,
                 sort: getTabSortMethod(activeTab)
             };
 
+            // Add following filter for Following tab
             if (activeTab === 'Following') {
                 requestParams.following = true;
             }
 
             const response = await apiService.fetchPosts(requestParams);
+
             const { posts: newPosts, pagination } = response;
             
             if (reset) {
-                setPosts(newPosts || []);
+                setPosts(newPosts);
             } else {
-                setPosts(prevPosts => [...prevPosts, ...(newPosts || [])]);
+                setPosts(prevPosts => [...prevPosts, ...newPosts]);
             }
             
-            setHasMore(pagination?.hasNextPage || false);
+            setHasMore(pagination.hasNextPage);
             setPage(pageNumber);
             
         } catch (error) {
             console.error('Error loading posts:', error);
             setError('Failed to load posts. Please try again.');
-            
-            // If reset failed, ensure we don't leave empty state
-            if (reset) {
-                setPosts([]);
-            }
         } finally {
             setIsLoading(false);
         }
-    }, [activeTab, activeCategory, isLoading, getTabSortMethod]);
+    }, [activeTab, activeCategory, isLoading]);
 
     /**
-     * Load initial posts when filters change
+     * Load initial posts when component mounts or filters change
      */
     useEffect(() => {
-        loadPosts(1, true);
-    }, [activeTab, activeCategory, loadPosts]);
+        loadPosts(1, true); // Reset posts and load first page
+    }, [activeTab, activeCategory]);
 
     /**
      * Load more posts for infinite scrolling
@@ -228,33 +225,27 @@ const Home = () => {
     }, [hasMore, isLoading, page, loadPosts]);
 
     /**
-     * Handle tab selection with improved state management
+     * Handle tab selection
      */
-    const handleTabClick = useCallback((tab) => {
-        if (tab === activeTab) return; // Prevent unnecessary re-renders
-        
+    const handleTabClick = (tab) => {
         setActiveTab(tab);
         setPage(1);
         setError(null);
-        setHasMore(true);
-    }, [activeTab]);
+    };
 
     /**
-     * Handle category selection with improved state management
+     * Handle category selection
      */
-    const handleCategoryClick = useCallback((category) => {
-        if (category === activeCategory) return;
-        
+    const handleCategoryClick = (category) => {
         setActiveCategory(category);
         setPage(1);
         setError(null);
-        setHasMore(true);
-    }, [activeCategory]);
+    };
 
     /**
-     * Handle follow button click with optimistic updates
+     * Handle follow button click
      */
-    const handleFollow = useCallback(async (e, userId) => {
+    const handleFollow = async (e, userId) => {
         e.stopPropagation();
         
         if (!currentUser) {
@@ -262,28 +253,10 @@ const Home = () => {
             return;
         }
 
-        // Optimistic update
-        setPosts(prevPosts => 
-            prevPosts.map(post => {
-                if (post.author._id === userId) {
-                    const isCurrentlyFollowing = post.author.isFollowedByUser;
-                    return {
-                        ...post,
-                        author: {
-                            ...post.author,
-                            isFollowedByUser: !isCurrentlyFollowing,
-                            followersCount: post.author.followersCount + (isCurrentlyFollowing ? -1 : 1)
-                        }
-                    };
-                }
-                return post;
-            })
-        );
-
         try {
             const result = await apiService.toggleFollow(userId);
             
-            // Update with actual result
+            // Update the specific post's author in the state
             setPosts(prevPosts => 
                 prevPosts.map(post => 
                     post.author._id === userId 
@@ -301,100 +274,118 @@ const Home = () => {
             
         } catch (error) {
             console.error('Error following user:', error);
-            
-            // Revert optimistic update on error
-            setPosts(prevPosts => 
-                prevPosts.map(post => {
-                    if (post.author._id === userId) {
-                        const isCurrentlyFollowing = post.author.isFollowedByUser;
-                        return {
-                            ...post,
-                            author: {
-                                ...post.author,
-                                isFollowedByUser: !isCurrentlyFollowing,
-                                followersCount: post.author.followersCount + (isCurrentlyFollowing ? -1 : 1)
-                            }
-                        };
-                    }
-                    return post;
-                })
-            );
-            
             if (error.message.includes('Authentication required')) {
                 navigate('/login');
             }
         }
-    }, [currentUser, navigate]);
+    };
 
     /**
      * Handle create post button click
      */
-    const handleCreatePost = useCallback(() => {
+    const handleCreatePost = () => {
+        console.log('FAB clicked');
+        const token = localStorage.getItem('token');
         if (!currentUser) {
             navigate('/login');
             return;
         }
         navigate('/create-post');
-    }, [currentUser, navigate]);
+    };
 
     /**
-     * Handle post click
+     * Handle post clicked
      */
-    const handlePostClick = useCallback((post) => {
+    const handlePostClick = (post) => {
         setSelectedPost(post);
-    }, []);
-
-    /**
-     * Close post modal
-     */
-    const handleCloseModal = useCallback(() => {
-        setSelectedPost(null);
-    }, []);
-
-    /**
-     * Retry loading posts
-     */
-    const handleRetry = useCallback(() => {
-        loadPosts(1, true);
-    }, [loadPosts]);
+    };
 
     return (
         <div className="home-main-container">
+            {/* Navigation bar at the top */}
             <Navbar />
 
+            {/* Main content area */}
             <div className="home-main-content">
-                {/* Sidebar */}
-                <div className="sidebar">
-                    {/* Discover Section */}
+                {/* Sidebar with discovery options and categories */}
+                <div className="home-sidebar">
                     <div className="home-section">
                         <h3 className="home-section-title">Discover</h3>
-                        {tabs.map(tab => (
-                            <div 
-                                key={tab}
-                                className={`tab ${activeTab === tab ? 'active' : ''}`}
-                                onClick={() => handleTabClick(tab)}
-                            >
-                                {tab}
-                            </div>
-                        ))}
+                        <div 
+                            className={`tab ${activeTab === 'For You' ? 'active' : ''}`}
+                            onClick={() => handleTabClick('For You')}
+                        >
+                            For You
+                        </div>
+                        <div 
+                            className={`tab ${activeTab === 'Following' ? 'active' : ''}`}
+                            onClick={() => handleTabClick('Following')}
+                        >
+                            Following
+                        </div>
+                        <div 
+                            className={`tab ${activeTab === 'Trending' ? 'active' : ''}`}
+                            onClick={() => handleTabClick('Trending')}
+                        >
+                            Trending
+                        </div>
                     </div>
 
-                    {/* Categories Section */}
+                    {/* Categories section */}
                     <div className="home-section">
                         <h3 className="home-section-title">Categories</h3>
-                        {categories.map(category => (
-                            <div 
-                                key={category}
-                                className={`category ${activeCategory === category ? 'active' : ''}`}
-                                onClick={() => handleCategoryClick(category)}
-                            >
-                                {category === 'all' ? 'All' : category}
-                            </div>
-                        ))}
+                        <div 
+                            className={`category ${activeCategory === 'all' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('all')}
+                        >
+                            All
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Fashion' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Fashion')}
+                        >
+                            Fashion
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Travel' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Travel')}
+                        >
+                            Travel
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Food' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Food')}
+                        >
+                            Food
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Beauty' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Beauty')}
+                        >
+                            Beauty
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Lifestyle' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Lifestyle')}
+                        >
+                            Lifestyle
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Technology' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Technology')}
+                        >
+                            Technology
+                        </div>
+                        <div 
+                            className={`category ${activeCategory === 'Sports' ? 'active' : ''}`}
+                            onClick={() => handleCategoryClick('Sports')}
+                        >
+                            Sports
+                        </div>
                     </div>
                 </div>
                 
-                {/* Feed Section */}
+                {/* Feed section with posts */}
                 <div className="feed">
                     <h2 className="feed-title">
                         {activeTab}
@@ -405,7 +396,7 @@ const Home = () => {
                     {error && (
                         <div className="error-message">
                             {error}
-                            <button onClick={handleRetry}>Try Again</button>
+                            <button onClick={() => loadPosts(1, true)}>Try Again</button>
                         </div>
                     )}
                     
@@ -418,9 +409,9 @@ const Home = () => {
                         endMessage={<p className="posts-end-message">You've seen all posts!</p>}
                     >
                         <div className="post-grid">
-                            {posts.map((post, index) => (
+                            {posts.map((post) => (
                                 <PostCard
-                                    key={`${post._id || post.id}-${index}`}
+                                    key={post._id || post.id}
                                     postData={post}
                                     currentUser={currentUser}
                                     onFollow={handleFollow}
@@ -429,36 +420,22 @@ const Home = () => {
                             ))}
                         </div>
 
-                        {/* No posts message */}
+                        {/* Show message when no posts are found */}
                         {!isLoading && posts.length === 0 && !error && (
                             <div className="no-posts-message">
                                 <h3>No posts found</h3>
-                                <p>
-                                    {activeTab === 'Following' 
-                                        ? "You're not following anyone yet. Try exploring the 'For You' tab to find interesting users to follow."
-                                        : "Try adjusting your filters or check back later for new content."
-                                    }
-                                </p>
+                                <p>Try adjusting your filters or search query.</p>
                             </div>
                         )}
                     </InfiniteScroll>
                 </div>
             </div>
-
-            {/* Post Modal */}
             {selectedPost && (
-                <PostModal 
-                    post={selectedPost} 
-                    onClose={handleCloseModal}
-                    currentUser={currentUser}
-                    onFollow={handleFollow}
-                />
+                <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
             )}
 
-            {/* Floating Action Button */}
-            <button className="fab" onClick={handleCreatePost} aria-label="Create new post">
-                +
-            </button>
+            {/* Floating action button for creating new posts */}
+            <button className="fab" onClick={handleCreatePost}>+</button>
         </div>
     );
 };
