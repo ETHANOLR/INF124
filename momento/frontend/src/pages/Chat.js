@@ -1175,7 +1175,7 @@ const Chat = () => {
                                                 }}
                                                 disabled={deletingChat}
                                             >
-                                                <span className="menu-icon">🗑️</span>
+                                                <span className="menu-icon"></span>
                                                 Delete Chat
                                             </button>
                                         </div>
@@ -1259,7 +1259,7 @@ const Chat = () => {
                             <button className="close-button" onClick={() => setShowDeleteConfirm(false)}>×</button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to delete chat with<strong>{getChatDisplayName(selectedChat)}</strong>?</p>
+                            <p>Are you sure you want to delete chat with <strong>{getChatDisplayName(selectedChat)}</strong> ?</p>
                             <p style={{ color: '#666', fontSize: '14px', marginTop: '10px' }}>
                                 This operation will permanently delete all chat history and cannot be recovered.
                             </p>

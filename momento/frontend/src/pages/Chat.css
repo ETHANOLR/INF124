@@ -1009,19 +1009,21 @@
 
 /* Delete Confirmation Modal Styles */
 .delete-confirm-modal {
-    max-width: 400px;
+    max-width: 650px;
+    max-height: 400px;
     padding: 0;
 }
 
 .delete-confirm-modal .modal-body {
     padding: 20px 30px;
+    text-align: center;
 }
 
 .delete-confirm-actions {
     display: flex;
     gap: 12px;
     margin-top: 20px;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .cancel-button {
@@ -1059,4 +1061,16 @@
 .delete-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+@media (max-width: 480px) {
+    .delete-confirm-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .cancel-button,
+    .delete-button {
+        width: 100%;
+        max-width: 200px;
+    }
 }
