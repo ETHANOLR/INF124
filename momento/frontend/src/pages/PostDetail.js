@@ -737,7 +737,7 @@ const PostDetail = () => {
                                 <button className="modal-nav modal-prev" onClick={prevImage}>‹</button>
                                 <button className="modal-nav modal-next" onClick={nextImage}>›</button>
                                 
-                                <div className="modal-counter">
+                                <div className="detail-modal-counter">
                                     {selectedImageIndex + 1} / {images.length}
                                 </div>
                                 
