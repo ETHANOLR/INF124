@@ -198,6 +198,7 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     padding: 0px 0px;
+    min-height: calc(1.5em * 3);
 }
 
 /* Post Metadata */
