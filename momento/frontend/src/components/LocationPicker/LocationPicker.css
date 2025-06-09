@@ -1,0 +1,313 @@
+/* LocationPicker.css */
+.location-picker {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 15px;
+    font-family: inherit;
+}
+
+.location-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.location-icon {
+    font-size: 18px;
+}
+
+/* Toggle Buttons */
+.location-toggle-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.location-toggle-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.location-toggle-btn:hover {
+    background-color: #f5f5f5;
+    border-color: #bbb;
+}
+
+.location-toggle-btn.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.location-toggle-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f8f9fa;
+}
+
+/* Manual Location Section */
+.manual-location-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.location-input {
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.location-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.location-help-text {
+    color: #666;
+    font-size: 12px;
+    margin: 0;
+}
+
+/* Current Location Section */
+.current-location-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.location-prompt {
+    text-align: center;
+    padding: 20px;
+}
+
+.get-location-btn {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.get-location-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.get-location-btn:active {
+    transform: translateY(0);
+}
+
+/* Loading State */
+.location-loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.location-loading p {
+    margin: 5px 0;
+    font-weight: 500;
+}
+
+.location-loading small {
+    color: #888;
+}
+
+/* Current Location Display */
+.current-location-display {
+    background-color: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    position: relative;
+}
+
+.location-info {
+    margin-bottom: 10px;
+}
+
+.location-info strong {
+    color: #333;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.location-name {
+    font-weight: 500;
+    color: #555;
+    margin: 5px 0;
+    line-height: 1.4;
+}
+
+.location-details {
+    color: #666;
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+.location-coordinates {
+    color: #888;
+    font-size: 12px;
+    font-family: monospace;
+    margin: 5px 0;
+}
+
+.refresh-location-btn {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: inherit;
+}
+
+.refresh-location-btn:hover {
+    background-color: #5a6268;
+}
+
+.refresh-location-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Error Display */
+.location-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.location-error p {
+    margin: 0 0 5px 0;
+    font-weight: 500;
+}
+
+.location-error small {
+    display: block;
+    margin-top: 5px;
+    color: #856404;
+}
+
+/* Clear Location Button */
+.clear-location-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 10px;
+    font-family: inherit;
+}
+
+.clear-location-btn:hover {
+    background-color: #c82333;
+}
+
+/* Privacy Notice */
+.location-privacy-notice {
+    margin-top: 15px;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+}
+
+.location-privacy-notice small {
+    color: #6c757d;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .location-picker {
+        padding: 12px;
+    }
+    
+    .location-toggle-buttons {
+        flex-direction: column;
+    }
+    
+    .location-toggle-btn {
+        flex: none;
+    }
+    
+    .get-location-btn {
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+    
+    .current-location-display {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .location-picker {
+        padding: 10px;
+    }
+    
+    .location-picker-header {
+        font-size: 15px;
+    }
+    
+    .location-input {
+        padding: 10px;
+        font-size: 13px;
+    }
+    
+    .get-location-btn {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+}
