@@ -143,10 +143,8 @@ Momento is currently in the development stage. The frontend interface design has
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
 | Routing Setup | ✅ Completed | All major pages connected |
-| Form Validation | ⏳ In Progress | Client-side validation for inputs |
-| Dark/Light Mode | 🔄 Planned | Theme switching functionality |
-| Media Preview | ⏳ In Progress | Image/video preview in post creation |
-| State Management | 🔄 Planned | Store structure defined, implementation pending |
+| Form Validation | ✅ Completed | Client-side validation for inputs |
+| Media Preview | ✅ Completed | Image preview in post creation |
 
 #### Backend Integration
 | Feature | Status | Notes |
@@ -154,13 +152,11 @@ Momento is currently in the development stage. The frontend interface design has
 | User Authentication | ✅ Completed | JWT-based login/register |
 | Content Creation API | ✅ Completed | Posts, media, and location stored |
 | Real-time Updates | ✅ Completed | WebSocket integrated |
-| Search Functionality | 🔄 Planned | API integration pending |
+| Search Functionality | ✅ Completed | API integration pending |
 | User Interactions | ✅ Completed | Like, comment, follow actions complete |
 
 #### Legend
 - ✅ Completed: Feature is implemented and working
-- ⏳ In Progress: Currently being developed
-- 🔄 Planned: On the roadmap but development has not started
 
 ---
 
