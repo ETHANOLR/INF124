@@ -4,7 +4,8 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Post = require('../models/Post');
-require('dotenv').config();
+require('dotenv').config({ path: './backend/.env' });
+console.log('DEBUG: MONGO_URI =', process.env.MONGO_URI);
 
 // Expanded sample post data with more variety and content
 const samplePosts = [
