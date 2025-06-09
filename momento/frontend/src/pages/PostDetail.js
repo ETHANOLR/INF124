@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import Navbar from '../components/NavBar/navBar';
+import ShareModal from '../components/ShareModal/ShareModal';
 import './PostDetail.css';
 
 /**
@@ -156,6 +157,10 @@ const PostDetail = () => {
     // Image gallery state
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [showImageModal, setShowImageModal] = useState(false);
+    
+    // Share modal state
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
 
     // Loading post details
     useEffect(() => {
@@ -346,7 +351,7 @@ const PostDetail = () => {
         );
     };
 
-    // Processing Likes
+    // Handle likes
     const handleLike = async () => {
         if (!currentUser || !authToken) {
             navigate('/login');
@@ -375,7 +380,7 @@ const PostDetail = () => {
         }
     };
 
-    // Handling Comment Submissions
+    // Handle comment submissions
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         
@@ -398,7 +403,7 @@ const PostDetail = () => {
             console.log('Submitting comment for post ID:', post.id); // Debug log
             const result = await apiService.addComment(post.id, newComment.trim(), authToken);
             
-            // Update post status
+            // Update post state
             setPost(prevPost => ({
                 ...prevPost,
                 engagement: {
@@ -421,7 +426,7 @@ const PostDetail = () => {
         }
     };
 
-    // Processing Sharing
+    // Handle sharing
     const handleShare = async () => {
         if (!currentUser || !authToken) {
             navigate('/login');
@@ -440,8 +445,11 @@ const PostDetail = () => {
                 sharesCount: result.sharesCount
             }));
             
-            // Can add tips for sharing success
-            alert('Post shared successfully!');
+            // If API returns share URL, use it, otherwise construct it
+            const postShareUrl = result.shareUrl || `${window.location.origin}/posts/${post.id}`;
+            setShareUrl(postShareUrl);
+            setShowShareModal(true);
+            
         } catch (error) {
             console.error('Error sharing post:', error);
             // If authentication error, logout and redirect
@@ -452,7 +460,7 @@ const PostDetail = () => {
         }
     };
 
-    // Handling follow/unfollow
+    // Handle follow/unfollow
     const handleFollow = async () => {
         if (!currentUser || !authToken) {
             navigate('/login');
@@ -483,7 +491,7 @@ const PostDetail = () => {
         }
     };
 
-    // Formatting Dates
+    // Format dates
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
@@ -495,7 +503,7 @@ const PostDetail = () => {
         });
     };
 
-    // Formatting comment dates
+    // Format comment dates
     const formatCommentDate = (dateString) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -755,6 +763,23 @@ const PostDetail = () => {
                     </div>
                 </div>
             )}
+
+            {/* Share Modal - Now using the reusable component */}
+            <ShareModal 
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                shareUrl={shareUrl}
+                title={post?.title || ''}
+                description={post?.content ? post.content.substring(0, 150) + '...' : ''}
+                options={{
+                    showSocialButtons: true,
+                    showCopyButton: true,
+                    allowNativeShare: true,
+                    socialPlatforms: ['twitter', 'facebook', 'whatsapp', 'email'],
+                    theme: 'light',
+                    size: 'medium'
+                }}
+            />
         </div>
     );
 };

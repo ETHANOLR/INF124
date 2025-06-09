@@ -1369,9 +1369,19 @@ app.post('/api/posts/:id/share', authenticateToken, async (req, res) => {
         // Add share
         await post.addShare(req.user.userId, shareType);
 
+        // 生成帖子链接
+        const postUrl = `${req.protocol}://${req.get('host').replace(':4000', ':3000')}/posts/${id}`;
+        
+
         res.json({
             message: 'Post shared successfully',
-            sharesCount: post.sharesCount
+            sharesCount: post.sharesCount,
+            shareUrl: postUrl, // 添加分享链接
+            post: {
+                id: post._id,
+                title: post.title,
+                author: post.author
+            }
         });
 
     } catch (error) {
