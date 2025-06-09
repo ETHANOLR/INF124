@@ -677,10 +677,11 @@ app.get('/api/posts', async (req, res) => {
             }
         }
 
-        // Build base query
+        // Build base query - ADD FILTER FOR VALID AUTHORS
         let query = {
             'status.published': true,
-            'status.isDeleted': false
+            'status.isDeleted': false,
+            author: { $exists: true, $ne: null } // Ensure author exists and is not null
         };
 
         // Add following filter - only show posts from users that current user follows
@@ -807,12 +808,21 @@ app.get('/api/posts', async (req, res) => {
                 .lean();
         }
 
+        // FILTER OUT POSTS WITH NULL AUTHORS (additional safety check)
+        posts = posts.filter(post => post.author && post.author._id);
+
         // If user is logged in, add interaction states
         if (currentUserId) {
             const currentUser = await User.findById(currentUserId);
             if (currentUser) {
                 posts = posts.map(post => {
                     const postObj = post.toJSON ? post.toJSON() : post;
+                    
+                    // SAFETY CHECK: Ensure author exists before processing
+                    if (!postObj.author || !postObj.author._id) {
+                        console.warn(`Post ${postObj._id} has invalid author, skipping interaction processing`);
+                        return postObj;
+                    }
                     
                     // Check if user has liked this post
                     postObj.isLikedByUser = post.engagement?.likes?.some(
