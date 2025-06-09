@@ -4,13 +4,15 @@ import Navbar from '../components/NavBar/navBar';
 import { Button } from '../components/buttons/buttons';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import LocationPicker from '../components/LocationPicker/LocationPicker';
+import Remind, { useRemind } from '../components/Remind/Remind';
 
 const PostCreation = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState('');
     const [category, setCategory] = useState('');
-    const [location, setLocation] = useState('');
+    const [locationData, setLocationData] = useState(null);
     const [privacy, setPrivacy] = useState('public');
     const [isSubmitting, setIsSubmitting] = useState(false);
     
@@ -23,6 +25,9 @@ const PostCreation = () => {
     
     const navigate = useNavigate();
     const { authToken } = useContext(AuthContext);
+    
+    // Remind hook for notifications
+    const { remind, showError, showSuccess, hideRemind } = useRemind();
 
     /**
      * Handle image file selection with validation
@@ -192,7 +197,7 @@ const PostCreation = () => {
      */
     const handlePost = async () => {
         if (!title || !description || !category) {
-            alert('Title, Description and Category are required');
+            showError('Title, Description and Category are required');
             return;
         }
 
@@ -230,9 +235,17 @@ const PostCreation = () => {
             };
 
             // Add location if provided
-            if (location && location.trim()) {
+            if (locationData) {
                 postData.location = {
-                    name: location.trim()
+                    name: locationData.name || '',
+                    coordinates: locationData.coordinates || null,
+                    address: locationData.address || {
+                        street: '',
+                        city: '',
+                        state: '',
+                        country: '',
+                        zipCode: ''
+                    }
                 };
             }
 
@@ -253,17 +266,22 @@ const PostCreation = () => {
             const createdPost = await response.json();
             console.log('Post created successfully:', createdPost);
 
+            // Show success message
+            showSuccess('Post created successfully!', 2000);
+
             // Clean up object URLs
             imagePreviews.forEach(preview => {
                 URL.revokeObjectURL(preview.url);
             });
 
-            // Navigate to home
-            navigate('/home');
+            // Navigate to home after a short delay
+            setTimeout(() => {
+                navigate('/home');
+            }, 2000);
 
         } catch (error) {
             console.error('Error creating post:', error);
-            setUploadErrors(error.message || 'Failed to create post');
+            showError(error.message || 'Failed to create post');
         } finally {
             setIsSubmitting(false);
         }
@@ -282,6 +300,16 @@ const PostCreation = () => {
         <div className="post-creation-container">
             {/* Navigation bar at the top */}
             <Navbar />
+
+            {/* Remind component for notifications */}
+            <Remind
+                message={remind.message}
+                type={remind.type}
+                isVisible={remind.isVisible}
+                onClose={hideRemind}
+                duration={remind.duration}
+                position="top-center"
+            />
 
             <div className="post-body">
                 {/* Media Upload Area */}
@@ -495,14 +523,12 @@ const PostCreation = () => {
                         </select>
                     </div>
 
-                    {/* Location Input */}
+                    {/* Location Picker */}
                     <div className="post-details-section">
                         <p>Location: </p>
-                        <input
-                            type="text"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="Add location (optional)"
+                        <LocationPicker 
+                            onLocationChange={setLocationData}
+                            initialLocation=""
                         />
                     </div>
 
