@@ -624,7 +624,7 @@ const Profile = () => {
                             alt={post.media.images[0].altText || post.title}
                             onError={(e) => {
                                 e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
+                                // e.target.nextSibling.style.display = 'flex';
                             }}
                         />
                     ) : (
