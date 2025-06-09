@@ -15,33 +15,153 @@
     transform: translateY(-5px);
 }
 
+/* Image Container Styles */
 .postcard-thumbnail {
-    /* padding-top: 56.25%;
-    background: #eee;
-    border-radius: 8px;
-    margin: 12px 12px 0;
-    position: relative;
-    overflow: hidden; */
     height: 180px;
     background-color: #f8f9fa;
     position: relative;
     overflow: hidden;
 }
 
-.postcard-thumbnail img{
-    /* position: absolute;
-    top: 0; left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;   */
-
+.postcard-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
 }
 
+.postcard:hover .postcard-image {
+    transform: scale(1.05);
+}
 
+/* Single Image Display */
+.postcard-single-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Placeholder for posts without images */
+.postcard-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    position: relative;
+}
+
+.placeholder-content {
+    text-align: center;
+}
+
+.placeholder-category {
+    background-color: rgba(255, 111, 97, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px;
+}
+
+/* Multi-Image Carousel */
+.postcard-image-carousel {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.carousel-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Navigation Arrows */
+.carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 2;
+    opacity: 0;
+}
+
+.postcard:hover .carousel-nav {
+    opacity: 1;
+}
+
+.carousel-nav:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-nav-prev {
+    left: 10px;
+}
+
+.carousel-nav-next {
+    right: 10px;
+}
+
+/* Image Counter */
+.image-counter {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    z-index: 2;
+}
+
+/* Carousel Dots */
+.carousel-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+}
+
+.carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.carousel-dot.active {
+    background: white;
+    transform: scale(1.2);
+}
+
+.carousel-dot:hover {
+    background: rgba(255, 255, 255, 0.8);
+}
 
 /* Post Content */
 .postcard-content {
@@ -88,6 +208,7 @@
     gap: 10px;
     margin-bottom: 15px;
     font-size: 12px;
+    flex-wrap: wrap;
 }
 
 .postcard-category {
@@ -105,6 +226,14 @@
     font-weight: 400;
 }
 
+.postcard-image-count {
+    color: #666;
+    font-weight: 500;
+    background-color: #f0f0f0;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+}
 
 .postcard-info {
     padding: 0 12px;
@@ -120,12 +249,11 @@
     width: 100%;
     box-sizing: border-box;
 }
-  
 
 .postcard-user {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     margin-bottom: 10px;
     padding: 8px 0;
 }
@@ -142,20 +270,20 @@
     font-weight: 600;
     color: #666;
     flex-shrink: 0;
+    margin-right: 10px;
 }
 
 .postcard-username {
     font-size: 14px;
     color: #333;
     font-weight: 500;
-    margin-left: 10px;
 }
 
 /* Post Statistics */
 .postcard-stats {
     width: 100%;
     display: flex;
-    /* gap: 15px; */
+    gap: 15px;
     margin-bottom: 0px;
     padding: 10px 0;
     border-top: 1px solid #f0f0f0;
@@ -163,11 +291,9 @@
 }
 
 .postcard-stats span {
-    width: 100%;
     font-size: 12px;
     color: #666;
     font-weight: 500;
-    text-align: center
 }
 
 .post-user {
@@ -177,11 +303,13 @@
     height: 40px;
     margin-top: 8px;
     margin-bottom: 12px;
+    width: 100%;
 }
 
 .author-left {
     display: flex;
     align-items: center;
+    flex: 1;
 }
 
 .avatar {
@@ -197,7 +325,7 @@
     font-weight: 500;
 }
 
-/* follow button 单独靠右 */
+/* Follow button */
 .follow-button {
     font-size: 13px;
     padding: 5px 10px;
@@ -206,14 +334,94 @@
     background-color: #ff6f61;
     color: white;
     cursor: pointer;
-    /* transition: background 0.2s ease; */
 }
 
 .follow-button.following {
     background-color: #999;
 }
 
-.follow-btn-small.following {
-    background-color: #aaa;
+.follow-btn-small {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
-  
+
+.follow-btn-small:hover {
+    background-color: #e05a4d;
+    transform: translateY(-1px);
+}
+
+.follow-btn-small.following {
+    background-color: #e0e0e0;
+    color: #666;
+}
+
+.follow-btn-small.following:hover {
+    background-color: #ffcccc;
+    color: #ff6f61;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .postcard {
+        min-width: 280px;
+    }
+    
+    .carousel-nav {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+    
+    .carousel-nav-prev {
+        left: 5px;
+    }
+    
+    .carousel-nav-next {
+        right: 5px;
+    }
+    
+    .image-counter {
+        top: 5px;
+        right: 5px;
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .carousel-dots {
+        bottom: 5px;
+        gap: 4px;
+    }
+    
+    .carousel-dot {
+        width: 6px;
+        height: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .postcard-content {
+        padding: 15px;
+    }
+    
+    .postcard-title {
+        font-size: 18px;
+        height: 45px;
+    }
+    
+    .postcard-metadata {
+        gap: 8px;
+    }
+    
+    .postcard-image-count {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+}

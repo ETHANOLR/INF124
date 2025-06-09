@@ -659,7 +659,8 @@ app.get('/api/posts', async (req, res) => {
             sort = 'newest',
             author,
             search,
-            city 
+            city,
+            following
         } = req.query;
 
         // Check for authentication token
@@ -676,11 +677,47 @@ app.get('/api/posts', async (req, res) => {
             }
         }
 
-        // Build base query
+        // Build base query - ADD FILTER FOR VALID AUTHORS
         let query = {
             'status.published': true,
-            'status.isDeleted': false
+            'status.isDeleted': false,
+            author: { $exists: true, $ne: null } // Ensure author exists and is not null
         };
+
+        // Add following filter - only show posts from users that current user follows
+        if (following === 'true') {
+            if (!currentUserId) {
+                return res.status(401).json({ 
+                    message: 'Authentication required to view following feed' 
+                });
+            }
+
+            // Get current user's following list
+            const currentUser = await User.findById(currentUserId).select('relationships.following');
+            if (!currentUser) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            // Extract user IDs from following list
+            const followingUserIds = currentUser.relationships.following.map(follow => follow.user);
+            
+            // If user doesn't follow anyone, return empty results
+            if (followingUserIds.length === 0) {
+                return res.json({
+                    posts: [],
+                    pagination: {
+                        currentPage: parseInt(page),
+                        totalPages: 0,
+                        totalPosts: 0,
+                        hasNextPage: false,
+                        hasPrevPage: false
+                    }
+                });
+            }
+
+            // Add filter to only show posts from followed users
+            query.author = { $in: followingUserIds };
+        }
 
         // Add city filter
         if (city && city.trim()) {       
@@ -771,12 +808,21 @@ app.get('/api/posts', async (req, res) => {
                 .lean();
         }
 
+        // FILTER OUT POSTS WITH NULL AUTHORS (additional safety check)
+        posts = posts.filter(post => post.author && post.author._id);
+
         // If user is logged in, add interaction states
         if (currentUserId) {
             const currentUser = await User.findById(currentUserId);
             if (currentUser) {
                 posts = posts.map(post => {
                     const postObj = post.toJSON ? post.toJSON() : post;
+                    
+                    // SAFETY CHECK: Ensure author exists before processing
+                    if (!postObj.author || !postObj.author._id) {
+                        console.warn(`Post ${postObj._id} has invalid author, skipping interaction processing`);
+                        return postObj;
+                    }
                     
                     // Check if user has liked this post
                     postObj.isLikedByUser = post.engagement?.likes?.some(
@@ -801,7 +847,7 @@ app.get('/api/posts', async (req, res) => {
         const totalPosts = await Post.countDocuments(query);
         const totalPages = Math.ceil(totalPosts / limitNum);
 
-        console.log(`Fetched ${posts.length} posts for page ${page}, category: ${category || 'all'}, sort: ${sort}`);
+        console.log(`Fetched ${posts.length} posts for page ${page}, category: ${category || 'all'}, sort: ${sort}, following: ${following || 'false'}`);
 
         res.json({
             posts,
@@ -924,13 +970,15 @@ app.get('/api/search', async (req, res) => {
             orConditions.push({ tags: { $regex: queryText, $options: 'i' } });
         }
 
-        if (searchType === 'all' || searchType === 'place') {
+        if (searchType === 'all' || searchType === 'places') {
             orConditions.push({
                 $or: [
-                    { 'location.name': new RegExp(queryText, 'i') },
-                    { 'location.address.city': new RegExp(queryText, 'i') },
-                    { 'location.address.state': new RegExp(queryText, 'i') },
-                    { 'location.address.country': new RegExp(queryText, 'i') }
+                    { 'location.name': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.street': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.city': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.state': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.country': { $regex: queryText, $options: 'i' } },
+                    { 'location.address.zipCode': { $regex: queryText, $options: 'i' } }
                 ]
             });
         }
@@ -994,11 +1042,19 @@ app.get('/api/search', async (req, res) => {
 
 /**
  * POST /api/posts
- * Create a new post
+ * Create a new post with media support
  */
 app.post('/api/posts', authenticateToken, async (req, res) => {
     try {
-        const { title, content, category, tags, visibility = 'public' } = req.body;
+        const { 
+            title, 
+            content, 
+            category, 
+            tags, 
+            visibility = 'public',
+            media,
+            location 
+        } = req.body;
 
         // Validate required fields
         if (!title || !content || !category) {
@@ -1007,8 +1063,8 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
             });
         }
 
-        // Create new post
-        const post = new Post({
+        // Prepare post data
+        const postData = {
             title: title.trim(),
             content: content.trim(),
             category,
@@ -1025,8 +1081,74 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
                 published: true,
                 publishedAt: new Date()
             }
-        });
+        };
 
+        // Add media if provided
+        if (media) {
+            postData.media = {};
+            
+            // Handle images
+            if (media.images && Array.isArray(media.images) && media.images.length > 0) {
+                postData.media.images = media.images.map(image => ({
+                    url: image.url,
+                    caption: image.caption || '',
+                    altText: image.altText || title, // Use title as default alt text
+                    uploadedAt: new Date()
+                }));
+                
+                console.log(`Adding ${postData.media.images.length} images to post`);
+            }
+            
+            // Handle videos (for future support)
+            if (media.videos && Array.isArray(media.videos) && media.videos.length > 0) {
+                postData.media.videos = media.videos.map(video => ({
+                    url: video.url,
+                    thumbnail: video.thumbnail || '',
+                    caption: video.caption || '',
+                    duration: video.duration || 0,
+                    uploadedAt: new Date()
+                }));
+            }
+            
+            // Handle audio (for future support)
+            if (media.audio && Array.isArray(media.audio) && media.audio.length > 0) {
+                postData.media.audio = media.audio.map(audio => ({
+                    url: audio.url,
+                    title: audio.title || '',
+                    duration: audio.duration || 0,
+                    uploadedAt: new Date()
+                }));
+            }
+        }
+
+        // Add location if provided
+        if (location) {
+            postData.location = {};
+            
+            if (location.name) {
+                postData.location.name = location.name.trim();
+            }
+            
+            if (location.coordinates) {
+                postData.location.coordinates = {
+                    latitude: location.coordinates.latitude,
+                    longitude: location.coordinates.longitude
+                };
+            }
+            
+            if (location.address) {
+                postData.location.address = {
+                    street: location.address.street || '',
+                    city: location.address.city || '',
+                    state: location.address.state || '',
+                    country: location.address.country || '',
+                    zipCode: location.address.zipCode || ''
+                };
+            }
+        }
+
+        // Create new post
+        const post = new Post(postData);
         await post.save();
         
         // Populate author information
@@ -1037,7 +1159,7 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
             $inc: { 'stats.postsCount': 1 }
         });
 
-        console.log(`New post created: ${post.title} by ${post.author.username}`);
+        console.log(`New post created: "${post.title}" by ${post.author.username} with ${post.media?.images?.length || 0} images`);
 
         res.status(201).json({
             message: 'Post created successfully',
@@ -1257,9 +1379,19 @@ app.post('/api/posts/:id/share', authenticateToken, async (req, res) => {
         // Add share
         await post.addShare(req.user.userId, shareType);
 
+        // 生成帖子链接
+        const postUrl = `${req.protocol}://${req.get('host').replace(':4000', ':3000')}/posts/${id}`;
+        
+
         res.json({
             message: 'Post shared successfully',
-            sharesCount: post.sharesCount
+            sharesCount: post.sharesCount,
+            shareUrl: postUrl, // 添加分享链接
+            post: {
+                id: post._id,
+                title: post.title,
+                author: post.author
+            }
         });
 
     } catch (error) {

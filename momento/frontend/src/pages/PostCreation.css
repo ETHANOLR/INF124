@@ -31,6 +31,13 @@
   flex-direction: column;
   color: #888;
   aspect-ratio: 3/2;
+  transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+  border-color: #999;
+  background-color: #f0f0f0;
+  cursor: pointer;
 }
 
 .upload-box p{
@@ -39,18 +46,148 @@
   margin-bottom: 15px;
 }
 
+/* Image Preview Styles */
+.image-previews {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid #e9ecef;
+}
+
+.image-previews h4 {
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.image-preview-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.image-preview-item:hover {
+  transform: scale(1.02);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+}
+
+.image-remove-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.image-remove-button:hover {
+  background: rgba(255, 0, 0, 1);
+  transform: scale(1.1);
+}
+
+.image-file-name {
+  font-size: 10px;
+  margin-top: 5px;
+  text-align: center;
+  color: #666;
+  word-break: break-all;
+}
+
+.clear-all-button {
+  background: none;
+  border: 1px solid #ddd;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.clear-all-button:hover {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+.upload-error {
+  color: #dc3545;
+  padding: 10px;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin-top: 10px;
+  border: 1px solid #f5c6cb;
+  font-size: 14px;
+}
+
+.upload-progress {
+  text-align: center;
+  margin-top: 15px;
+  color: #666;
+  font-style: italic;
+}
+
+.upload-success {
+  color: #28a745;
+  padding: 10px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  margin-top: 10px;
+  border: 1px solid #c8e6c9;
+  font-size: 14px;
+}
+
+/* Toggle Options */
+.toggle-options {
+  margin-top: 20px;
+}
+
 .toggle-options label {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   background-color: #f0f0f0;
   padding: 12px;
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
+.toggle-options label:hover {
+  background-color: #e9ecef;
+}
+
+.toggle-options input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Post Details */
 .post-details {
-  /* background-color: aqua; */
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -62,12 +199,18 @@
   margin: 0;
   margin-top: -18px;
   font-size: x-large;
+  color: #333;
 }
 
-.post-details-section p{
-  margin: 0;
+.post-details-section {
+  margin-bottom: 15px;
+}
+
+.post-details-section p {
+  margin: 0 0 8px 0;
   font-size: 15px;
   color: #555;
+  font-weight: 500;
 }
 
 .post-details input,
@@ -79,15 +222,81 @@
   font-size: 14px;
   width: 100%;
   box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.post-details input:focus,
+.post-details textarea:focus,
+.post-details select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .post-details textarea {
   min-height: 100px;
   resize: vertical;
+  font-family: inherit;
 }
 
 .post-button {
-  margin-top: 10px;
+  margin-top: 20px;
   justify-content: center;
   display: flex;
+}
+
+.post-button button {
+  transition: all 0.2s ease;
+}
+
+.post-button button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .post-body {
+    flex-direction: column;
+    padding: 16px;
+    gap: 20px;
+  }
+  
+  .upload-box {
+    aspect-ratio: 2/1;
+    padding: 30px 20px;
+  }
+  
+  .image-preview-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+  }
+  
+  .image-preview-item img {
+    height: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .post-creation-container {
+    padding: 0 10px;
+  }
+  
+  .post-body {
+    padding: 12px;
+    gap: 15px;
+  }
+  
+  .upload-box {
+    padding: 20px 15px;
+  }
+  
+  .image-preview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .post-details h3 {
+    font-size: large;
+  }
 }
