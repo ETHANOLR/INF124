@@ -1,0 +1,382 @@
+/* Remind.css */
+.remind-overlay {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* Position variants */
+.remind-overlay.top-center {
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.remind-overlay.top-right {
+    top: 20px;
+    right: 20px;
+}
+
+.remind-overlay.bottom-center {
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.remind-overlay.bottom-right {
+    bottom: 20px;
+    right: 20px;
+}
+
+.remind {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 500px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 
+        0 10px 25px rgba(0, 0, 0, 0.1),
+        0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    position: relative;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Type-specific styles */
+.remind.success {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.remind.error {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.remind.warning {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.remind.info {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.remind-content {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    gap: 12px;
+}
+
+.remind-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Success icon - checkmark */
+.remind-icon-success {
+    background-color: #10b981;
+}
+
+.remind-icon-success::after {
+    content: '';
+    width: 6px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-top: -2px;
+}
+
+/* Error icon - X mark */
+.remind-icon-error {
+    background-color: #ef4444;
+}
+
+.remind-icon-error::before,
+.remind-icon-error::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 2px;
+    background-color: white;
+    border-radius: 1px;
+}
+
+.remind-icon-error::before {
+    transform: rotate(45deg);
+}
+
+.remind-icon-error::after {
+    transform: rotate(-45deg);
+}
+
+/* Warning icon - exclamation mark */
+.remind-icon-warning {
+    background-color: #f59e0b;
+}
+
+.remind-icon-warning::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    background-color: white;
+    border-radius: 1px;
+    top: 3px;
+}
+
+.remind-icon-warning::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background-color: white;
+    border-radius: 50%;
+    bottom: 3px;
+}
+
+/* Info icon - i */
+.remind-icon-info {
+    background-color: #3b82f6;
+}
+
+.remind-icon-info::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    background-color: white;
+    border-radius: 1px;
+    bottom: 3px;
+}
+
+.remind-icon-info::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background-color: white;
+    border-radius: 50%;
+    top: 3px;
+}
+
+.remind-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.remind-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.remind-close:hover {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    transform: scale(1.1);
+}
+
+.remind-close:active {
+    transform: scale(0.95);
+}
+
+/* Progress bar */
+.remind-progress {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, currentColor);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform-origin: left;
+    animation: progress-bar 5s linear forwards;
+}
+
+.remind-progress.success {
+    color: #10b981;
+}
+
+.remind-progress.error {
+    color: #ef4444;
+}
+
+.remind-progress.warning {
+    color: #f59e0b;
+}
+
+.remind-progress.info {
+    color: #3b82f6;
+}
+
+@keyframes progress-bar {
+    from {
+        transform: scaleX(1);
+    }
+    to {
+        transform: scaleX(0);
+    }
+}
+
+/* Animation classes */
+.remind.slide-in {
+    animation: slideInDown 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.remind.slide-out {
+    animation: slideOutUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Slide animations for top positions */
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-100%) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes slideOutUp {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-100%) scale(0.95);
+    }
+}
+
+/* Slide animations for bottom positions */
+.remind-overlay.bottom-center .remind.slide-in,
+.remind-overlay.bottom-right .remind.slide-in {
+    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.remind-overlay.bottom-center .remind.slide-out,
+.remind-overlay.bottom-right .remind.slide-out {
+    animation: slideOutDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(100%) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes slideOutDown {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(100%) scale(0.95);
+    }
+}
+
+/* Hover effects */
+.remind:hover {
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.15),
+        0 8px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.remind:hover .remind-progress {
+    animation-play-state: paused;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .remind {
+        background: rgba(31, 41, 55, 0.95);
+        color: white;
+    }
+    
+    .remind-message {
+        color: #f9fafb;
+    }
+    
+    .remind-close {
+        color: #9ca3af;
+    }
+    
+    .remind-close:hover {
+        background-color: #374151;
+        color: #d1d5db;
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .remind-overlay {
+        left: 10px !important;
+        right: 10px !important;
+        transform: none !important;
+    }
+    
+    .remind {
+        min-width: auto;
+        max-width: none;
+        margin: 0;
+    }
+    
+    .remind-content {
+        padding: 14px 16px;
+        gap: 10px;
+    }
+    
+    .remind-message {
+        font-size: 13px;
+    }
+    
+    .remind-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .remind,
+    .remind-close,
+    .remind-progress {
+        animation: none !important;
+        transition: none !important;
+    }
+    
+    .remind.slide-in {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
