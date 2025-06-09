@@ -1379,14 +1379,27 @@ app.post('/api/posts/:id/share', authenticateToken, async (req, res) => {
         // Add share
         await post.addShare(req.user.userId, shareType);
 
-        // 生成帖子链接
-        const postUrl = `${req.protocol}://${req.get('host').replace(':4000', ':3000')}/posts/${id}`;
+        // 生成帖子链接 - 修复版本
+        let postUrl;
+        const host = req.get('host');
         
+        // 根据环境和主机名生成正确的前端URL
+        if (host.includes('localhost')) {
+            // 开发环境
+            postUrl = `http://localhost:3000/posts/${id}`;
+        } else if (host.includes('api.momento.lifestyle')) {
+            // 生产环境 - API域名映射到前端域名
+            postUrl = `https://www.momento.lifestyle/posts/${id}`;
+        } else {
+            // 备用方案：使用环境变量或默认值
+            const frontendUrl = process.env.FRONTEND_URL || 'https://www.momento.lifestyle';
+            postUrl = `${frontendUrl}/posts/${id}`;
+        }
 
         res.json({
             message: 'Post shared successfully',
             sharesCount: post.sharesCount,
-            shareUrl: postUrl, // 添加分享链接
+            shareUrl: postUrl,
             post: {
                 id: post._id,
                 title: post.title,
