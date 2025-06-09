@@ -20,6 +20,7 @@ import { AuthContext } from '../contexts/AuthContext';
  * - Optimistic UI updates with deduplication
  * - Fixed ID handling and error management
  * - Message persistence after leaving/returning to page
+ * - Delete chat functionality
  */
 
 const Chat = () => {
@@ -39,6 +40,7 @@ const Chat = () => {
     const [typingUsers, setTypingUsers] = useState(new Set());
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [showMessageMenu, setShowMessageMenu] = useState(null);
+    const [showChatMenu, setShowChatMenu] = useState(false); // 新增：控制聊天菜单显示
     const [isConnected, setIsConnected] = useState(false);
     const [connectionError, setConnectionError] = useState(null);
     
@@ -55,6 +57,10 @@ const Chat = () => {
     const [searchingUsers, setSearchingUsers] = useState(false);
     const [fetchError, setFetchError] = useState(null);
     const [userSearchQuery, setUserSearchQuery] = useState('');
+    
+    // Delete confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingChat, setDeletingChat] = useState(false);
     
     // Typing timeout reference
     const typingTimeoutRef = useRef(null);
@@ -86,6 +92,22 @@ const Chat = () => {
             _id: chatId
         };
     };
+
+    /**
+     * 点击外部关闭菜单
+     */
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showChatMenu && !event.target.closest('.chat-menu-container')) {
+                setShowChatMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showChatMenu]);
 
     /**
      * Initialize socket connection and authentication
@@ -294,6 +316,72 @@ const Chat = () => {
             return [];
         } finally {
             setLoadingMessages(false);
+        }
+    };
+
+    /**
+     * 删除聊天功能
+     */
+    const handleDeleteChat = async () => {
+        if (!selectedChat) return;
+
+        const chatId = getChatId(selectedChat);
+        if (!isValidObjectId(chatId)) {
+            setConnectionError('Invalid chat selected');
+            return;
+        }
+
+        try {
+            setDeletingChat(true);
+            console.log('Deleting chat:', chatId);
+
+            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+            const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                // 从对话列表中移除
+                setConversations(prev => prev.filter(conv => getChatId(conv) !== chatId));
+                
+                // 清除消息
+                setMessages(prev => {
+                    const newMessages = { ...prev };
+                    delete newMessages[chatId];
+                    return newMessages;
+                });
+                
+                // 清除未读计数
+                setUnreadCounts(prev => {
+                    const newCounts = { ...prev };
+                    delete newCounts[chatId];
+                    return newCounts;
+                });
+                
+                // 清除选中的聊天
+                setSelectedChat(null);
+                
+                // 离开socket房间
+                if (socketRef.current && socketRef.current.connected) {
+                    socketRef.current.emit('leave_chat', chatId);
+                }
+                
+                console.log('Chat deleted successfully');
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to delete chat');
+            }
+        } catch (error) {
+            console.error('Error deleting chat:', error);
+            setConnectionError(`Failed to delete chat: ${error.message}`);
+        } finally {
+            setDeletingChat(false);
+            setShowDeleteConfirm(false);
+            setShowChatMenu(false);
         }
     };
 
@@ -1067,7 +1155,32 @@ const Chat = () => {
                                          <span className="online-status">Active now</span>}
                                     </div>
                                 </div>
-                                <button className="menu-button">⋯</button>
+                                
+                                {/* 聊天菜单 */}
+                                <div className="chat-menu-container">
+                                    <button 
+                                        className="menu-button" 
+                                        onClick={() => setShowChatMenu(!showChatMenu)}
+                                    >
+                                        ⋯
+                                    </button>
+                                    
+                                    {showChatMenu && (
+                                        <div className="chat-dropdown-menu">
+                                            <button 
+                                                className="menu-item delete-chat"
+                                                onClick={() => {
+                                                    setShowChatMenu(false);
+                                                    setShowDeleteConfirm(true);
+                                                }}
+                                                disabled={deletingChat}
+                                            >
+                                                <span className="menu-icon">🗑️</span>
+                                                Delete Chat
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             
                             <div className="messages-container">
@@ -1136,6 +1249,41 @@ const Chat = () => {
                     )}
                 </div>
             </div>
+            
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+                    <div className="modal-content delete-confirm-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Delete Chat</h3>
+                            <button className="close-button" onClick={() => setShowDeleteConfirm(false)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p>Are you sure you want to delete chat with<strong>{getChatDisplayName(selectedChat)}</strong>?</p>
+                            <p style={{ color: '#666', fontSize: '14px', marginTop: '10px' }}>
+                                This operation will permanently delete all chat history and cannot be recovered.
+                            </p>
+                            
+                            <div className="delete-confirm-actions">
+                                <button 
+                                    className="cancel-button"
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    disabled={deletingChat}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    className="delete-button"
+                                    onClick={handleDeleteChat}
+                                    disabled={deletingChat}
+                                >
+                                    {deletingChat ? 'Deleting...' : 'Delete'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {/* New Chat Modal */}
             {showNewChatModal && (

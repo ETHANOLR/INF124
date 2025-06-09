@@ -2038,6 +2038,80 @@ app.get('/api/chats', authenticateToken, async (req, res) => {
     }
 });
 
+/**
+ * DELETE /api/chats/:chatId
+ * Delete a specific chat conversation
+ */
+app.delete('/api/chats/:chatId', authenticateToken, async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const currentUserId = req.user.userId;
+
+        console.log(`User ${currentUserId} attempting to delete chat: ${chatId}`);
+
+        // Validate chatId
+        if (!isValidObjectId(chatId)) {
+            return res.status(400).json({ message: 'Invalid chat ID' });
+        }
+
+        // Find the chat and verify user is a participant
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
+        }
+
+        // Check if user is a participant
+        if (!chat.participants.includes(currentUserId)) {
+            return res.status(403).json({ message: 'Access denied. You are not a participant in this chat.' });
+        }
+
+        // For direct chats, we'll soft delete by removing the user from participants
+        // For group chats, if user is admin and only admin, we may need different logic
+        if (chat.type === 'direct') {
+            // For direct chats with 2 participants, mark as deleted for this user
+            // In a production app, you might want to implement user-specific soft delete
+            // For now, we'll completely delete the chat and its messages
+            
+            // Delete all messages in this chat
+            const messageDeleteResult = await Message.deleteMany({ chat: chatId });
+            console.log(`Deleted ${messageDeleteResult.deletedCount} messages from chat ${chatId}`);
+            
+            // Delete the chat
+            await Chat.findByIdAndDelete(chatId);
+            
+            console.log(`Chat ${chatId} deleted successfully by user ${currentUserId}`);
+            
+            res.json({
+                message: 'Chat deleted successfully',
+                deletedMessagesCount: messageDeleteResult.deletedCount
+            });
+            
+        } else if (chat.type === 'group') {
+            // For group chats, remove the user from participants
+            const updatedChat = await chat.removeParticipant(currentUserId);
+            
+            // If no participants left, delete the entire chat
+            if (updatedChat.participants.length === 0) {
+                await Message.deleteMany({ chat: chatId });
+                await Chat.findByIdAndDelete(chatId);
+                console.log(`Empty group chat ${chatId} deleted completely`);
+            }
+            
+            res.json({
+                message: 'Left group chat successfully',
+                remainingParticipants: updatedChat.participants.length
+            });
+        }
+
+    } catch (error) {
+        console.error('Delete chat error:', error);
+        res.status(500).json({ 
+            message: 'Failed to delete chat',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+});
+
 // Create or get existing chat
 app.post('/api/chats', authenticateToken, async (req, res) => {
     try {
