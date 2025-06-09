@@ -20,6 +20,7 @@ import { AuthContext } from '../contexts/AuthContext';
  * - Optimistic UI updates with deduplication
  * - Fixed ID handling and error management
  * - Message persistence after leaving/returning to page
+ * - Delete chat functionality
  */
 
 const Chat = () => {
@@ -39,6 +40,7 @@ const Chat = () => {
     const [typingUsers, setTypingUsers] = useState(new Set());
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [showMessageMenu, setShowMessageMenu] = useState(null);
+    const [showChatMenu, setShowChatMenu] = useState(false); // 新增：控制聊天菜单显示
     const [isConnected, setIsConnected] = useState(false);
     const [connectionError, setConnectionError] = useState(null);
     
@@ -55,6 +57,10 @@ const Chat = () => {
     const [searchingUsers, setSearchingUsers] = useState(false);
     const [fetchError, setFetchError] = useState(null);
     const [userSearchQuery, setUserSearchQuery] = useState('');
+    
+    // Delete confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingChat, setDeletingChat] = useState(false);
     
     // Typing timeout reference
     const typingTimeoutRef = useRef(null);
@@ -86,6 +92,22 @@ const Chat = () => {
             _id: chatId
         };
     };
+
+    /**
+     * 点击外部关闭菜单
+     */
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showChatMenu && !event.target.closest('.chat-menu-container')) {
+                setShowChatMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showChatMenu]);
 
     /**
      * Initialize socket connection and authentication
@@ -209,12 +231,20 @@ const Chat = () => {
                 const chats = await response.json();
                 console.log(`Fetched ${chats.length} conversations`);
                 
-                // Rest of the function remains the same...
-                const standardizedChats = chats.map(standardizeChat);
-                setConversations(standardizedChats);
+                // Deduplicate chats based on chat ID
+                const uniqueChats = chats.reduce((acc, chat) => {
+                    const chatId = getChatId(chat);
+                    if (chatId && !acc.some(existingChat => getChatId(existingChat) === chatId)) {
+                        acc.push(standardizeChat(chat));
+                    }
+                    return acc;
+                }, []);
+                
+                console.log(`After deduplication: ${uniqueChats.length} unique conversations`);
+                setConversations(uniqueChats);
                 
                 const unreadMap = {};
-                standardizedChats.forEach(chat => {
+                uniqueChats.forEach(chat => {
                     const chatId = getChatId(chat);
                     if (chatId) {
                         unreadMap[chatId] = chat.unreadCount || 0;
@@ -223,7 +253,7 @@ const Chat = () => {
                 setUnreadCounts(unreadMap);
 
                 if (socketRef.current && socketRef.current.connected) {
-                    standardizedChats.forEach(chat => {
+                    uniqueChats.forEach(chat => {
                         const chatId = getChatId(chat);
                         if (isValidObjectId(chatId)) {
                             socketRef.current.emit('join_chat', chatId);
@@ -294,6 +324,72 @@ const Chat = () => {
             return [];
         } finally {
             setLoadingMessages(false);
+        }
+    };
+
+    /**
+     * 删除聊天功能
+     */
+    const handleDeleteChat = async () => {
+        if (!selectedChat) return;
+
+        const chatId = getChatId(selectedChat);
+        if (!isValidObjectId(chatId)) {
+            setConnectionError('Invalid chat selected');
+            return;
+        }
+
+        try {
+            setDeletingChat(true);
+            console.log('Deleting chat:', chatId);
+
+            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+            const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                // 从对话列表中移除
+                setConversations(prev => prev.filter(conv => getChatId(conv) !== chatId));
+                
+                // 清除消息
+                setMessages(prev => {
+                    const newMessages = { ...prev };
+                    delete newMessages[chatId];
+                    return newMessages;
+                });
+                
+                // 清除未读计数
+                setUnreadCounts(prev => {
+                    const newCounts = { ...prev };
+                    delete newCounts[chatId];
+                    return newCounts;
+                });
+                
+                // 清除选中的聊天
+                setSelectedChat(null);
+                
+                // 离开socket房间
+                if (socketRef.current && socketRef.current.connected) {
+                    socketRef.current.emit('leave_chat', chatId);
+                }
+                
+                console.log('Chat deleted successfully');
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to delete chat');
+            }
+        } catch (error) {
+            console.error('Error deleting chat:', error);
+            setConnectionError(`Failed to delete chat: ${error.message}`);
+        } finally {
+            setDeletingChat(false);
+            setShowDeleteConfirm(false);
+            setShowChatMenu(false);
         }
     };
 
@@ -889,7 +985,18 @@ const Chat = () => {
             return chat.groupInfo?.name || 'Unnamed Group';
         }
         const otherParticipant = getOtherParticipant(chat);
-        return otherParticipant?.username || 'Unknown User';
+        if (!otherParticipant) return 'Unknown User';
+        
+        const displayName = otherParticipant.profile?.displayName || otherParticipant.username;
+        const username = otherParticipant.username;
+        
+        // If displayName is same as username, just show username
+        if (displayName === username) {
+            return username;
+        }
+        
+        // Otherwise show "DisplayName (username)" format
+        return `${displayName} (${username})`;
     };
 
     /**
@@ -1004,7 +1111,7 @@ const Chat = () => {
                                                     alt={getChatDisplayName(conversation)}
                                                 />
                                             ) : (
-                                                <div className="avatar-placeholder">
+                                                <div className="chat-avatar-placeholder">
                                                     {getChatDisplayName(conversation).charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -1052,7 +1159,7 @@ const Chat = () => {
                                                 alt={getChatDisplayName(selectedChat)}
                                             />
                                         ) : (
-                                            <div className="avatar-placeholder">
+                                            <div className="chat-avatar-placeholder">
                                                 {getChatDisplayName(selectedChat).charAt(0).toUpperCase()}
                                             </div>
                                         )}
@@ -1067,7 +1174,32 @@ const Chat = () => {
                                          <span className="online-status">Active now</span>}
                                     </div>
                                 </div>
-                                <button className="menu-button">⋯</button>
+                                
+                                {/* 聊天菜单 */}
+                                <div className="chat-menu-container">
+                                    <button 
+                                        className="menu-button" 
+                                        onClick={() => setShowChatMenu(!showChatMenu)}
+                                    >
+                                        ⋯
+                                    </button>
+                                    
+                                    {showChatMenu && (
+                                        <div className="chat-dropdown-menu">
+                                            <button 
+                                                className="menu-item delete-chat"
+                                                onClick={() => {
+                                                    setShowChatMenu(false);
+                                                    setShowDeleteConfirm(true);
+                                                }}
+                                                disabled={deletingChat}
+                                            >
+                                                <span className="menu-icon"></span>
+                                                Delete Chat
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             
                             <div className="messages-container">
@@ -1137,6 +1269,41 @@ const Chat = () => {
                 </div>
             </div>
             
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+                    <div className="modal-content delete-confirm-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Delete Chat</h3>
+                            <button className="close-button" onClick={() => setShowDeleteConfirm(false)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p>Are you sure you want to delete chat with <strong>{getChatDisplayName(selectedChat)}</strong> ?</p>
+                            <p style={{ color: '#666', fontSize: '14px', marginTop: '10px' }}>
+                                This operation will permanently delete all chat history and cannot be recovered.
+                            </p>
+                            
+                            <div className="delete-confirm-actions">
+                                <button 
+                                    className="cancel-button"
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    disabled={deletingChat}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    className="delete-button"
+                                    onClick={handleDeleteChat}
+                                    disabled={deletingChat}
+                                >
+                                    {deletingChat ? 'Deleting...' : 'Delete'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* New Chat Modal */}
             {showNewChatModal && (
                 <div className="modal-overlay" onClick={() => setShowNewChatModal(false)}>
@@ -1204,7 +1371,12 @@ const Chat = () => {
                                 </div>
                             ) : (
                                 <div className="user-list">
-                                    {filteredUsers.map(user => (
+                                {filteredUsers.map(user => {
+                                    const displayName = user.profile?.displayName || user.username;
+                                    const username = user.username;
+                                    const userDisplayText = displayName === username ? username : `${displayName} (${username})`;
+                                    
+                                    return (
                                         <div
                                             key={user._id}
                                             className="user-item"
@@ -1212,22 +1384,23 @@ const Chat = () => {
                                         >
                                             <div className="user-avatar">
                                                 {user.profile?.profilePicture?.url ? (
-                                                    <img src={user.profile.profilePicture.url} alt={user.username} />
+                                                    <img src={user.profile.profilePicture.url} alt={userDisplayText} />
                                                 ) : (
-                                                    <div className="avatar-placeholder">
-                                                        {(user.profile?.displayName || user.username).charAt(0).toUpperCase()}
+                                                    <div className="chat-avatar-placeholder">
+                                                        {displayName.charAt(0).toUpperCase()}
                                                     </div>
                                                 )}
                                                 {isUserOnline(user._id) && <div className="online-indicator"></div>}
                                             </div>
                                             <div className="user-info">
                                                 <span className="username">
-                                                    {user.profile?.displayName || user.username}
+                                                    {userDisplayText}
                                                 </span>
                                                 {isUserOnline(user._id) && <span className="online-text">Online</span>}
                                             </div>
                                         </div>
-                                    ))}
+                                    );
+                                })}
                                 </div>
                             )}
                         </div>

@@ -293,17 +293,19 @@ const Explore = () => {
           <div className="sidebar-section">
             <h3 className="sidebar-title">Popular Cities</h3>
             <ol className="explore-popular-cities">
-              {locationStats.map(({ city: loc, count }) => (
-                <li key={loc}>
-                  <button
-                    onClick={() => setCity(loc)}
-                    className={loc === city ? 'active' : ''}
-                  >
-                    <span className="explore-city-name">{loc}</span>
-                    <span className="explore-city-count">{count}</span>
-                  </button>
-                </li>
-              ))}
+              {locationStats.map(({ city: loc, count }, idx) => {
+                  if (idx >= 10) return null;
+                  return (
+                    <li key={loc}>
+                    <button
+                      onClick={() => setCity(loc)}
+                      className={loc === city ? 'active' : ''}
+                    >
+                      <span className="explore-city-name">{loc}</span>
+                      <span className="explore-city-count">{count}</span>
+                    </button>
+                    </li>
+                )})}
             </ol>
           </div>
         </div>
