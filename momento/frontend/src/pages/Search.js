@@ -5,6 +5,7 @@ import Navbar from '../components/NavBar/navBar';
 import './Search.css';
 import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
 import PostModal from '../components/PostModel/PostModel';
+import PostCard from '../components/PostCard/PostCard';
 
 const API_BASE = process.env.REACT_APP_API_URL || 
   (window.location.hostname === 'localhost' ? 'http://localhost:4000' : 'https://api.momento.lifestyle');
@@ -164,83 +165,13 @@ const SearchPage = () => {
                 >
                   <div className = "post-grid">
                       {results.map((post) => (
-                          <div 
-                              key={post._id || post.id} 
-                              className="post-item"
+                          <PostCard
+                              key={post._id || post.id}
+                              postData={post}
+                              currentUser={currentUser}
+                              onFollow={handleFollow}
                               onClick={() => handlePostClick(post)}
-                              style={{ cursor: 'pointer' }}
-                          >
-                              {/* Post thumbnail - use first image if available */}
-                              <div className="search-post-thumbnail">
-                                  {post.media?.images?.[0]?.url ? (
-                                      <img 
-                                          src={post.media.images[0].url} 
-                                          alt={post.media.images[0].altText || post.title}
-                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                      />
-                                  ) : (
-                                      <div style={{ 
-                                          display: 'flex', 
-                                          alignItems: 'center', 
-                                          justifyContent: 'center',
-                                          height: '100%',
-                                          backgroundColor: '#f0f0f0',
-                                          color: '#999'
-                                      }}>
-                                          {post.category}
-                                      </div>
-                                  )}
-                              </div>
-                                    
-                              <div className="search-post-content">
-                                  <h3 className="search-post-title">{post.title}</h3>
-                                  <p className="search-post-details">
-                                      {post.excerpt || post.content.substring(0, 150) + '...'}
-                                  </p>
-                                        
-                                  {/* Post metadata */}
-                                  <div className="search-post-metadata">
-                                      <span className="search-post-category">{post.category}</span>
-                                      <span className="search-post-date">{formatDate(post.createdAt)}</span>
-                                  </div>
-                                        
-                                  {/* Author information */}
-                                  <div className="search-post-user">
-                                      <div className="search-user-avatar">
-                                          {post.author?.profile?.profilePicture?.url ? (
-                                              <img 
-                                                  src={post.author.profile.profilePicture.url}
-                                                  alt={post.author.username}
-                                                  style={{ width: '100%', height: '100%', borderRadius: '50%' }}
-                                              />
-                                          ) : (
-                                              <div style={{ 
-                                                  display: 'flex', 
-                                                  alignItems: 'center', 
-                                                  justifyContent: 'center',
-                                                  height: '100%',
-                                                  backgroundColor: '#e0e0e0',
-                                                  borderRadius: '50%'
-                                              }}>
-                                                  {post.author?.username?.[0]?.toUpperCase()}
-                                              </div>
-                                          )}
-                                      </div>
-                                      <div className="search-author-info">
-                                          <span className="search-username">
-                                              {post.author?.profile?.displayName || post.author?.username}
-                                          </span>
-                                      </div>
-                                  </div>
-                                        
-                                  {/* Post statistics */}
-                                  <div className="post-stats">
-                                      <span>{post.likesCount || 0} likes</span>
-                                      <span>{post.commentsCount || 0} comments</span>
-                                      <span>{post.analytics?.views || 0} views</span>
-                                  </div>
-                              </div>
-                          </div>
+                          />
                       ))}
                   </div>
                         

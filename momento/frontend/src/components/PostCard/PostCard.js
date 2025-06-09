@@ -3,7 +3,7 @@ import './PostCard.css';
 import { Button } from '../buttons/buttons';
 import { useNavigate } from 'react-router-dom';
 
-function PostCard({ postData, currentUser, onFollow }) {
+function PostCard({ postData, currentUser, onFollow, onClick }) {
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -140,7 +140,13 @@ function PostCard({ postData, currentUser, onFollow }) {
     <div 
         key={post._id || post.id} 
         className="postcard"
-        onClick={() => handlePostClick(post._id || post.id)}
+        onClick={() => {
+          if (typeof onClick === 'function') {
+            onClick(post); // Let parent (like SearchPage) handle post click (e.g., show modal)
+          } else {
+            navigate(`/posts/${post._id || post.id}`); // Default fallback
+          }
+        }}
     >
         {/* Post thumbnail with multi-image support */}
         <div className="postcard-thumbnail">

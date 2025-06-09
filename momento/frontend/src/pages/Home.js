@@ -6,6 +6,7 @@ import './Home.css';
 import SearchBar from '../components/SearchBar/searchBar';
 import Navbar from '../components/NavBar/navBar';
 import PostCard from '../components/PostCard/PostCard';
+import PostModal from '../components/PostModel/PostModel';
 import InfiniteScroll from '../components/InfiniteScroll/InfiniteScroll';
 
 /**
@@ -131,6 +132,9 @@ const Home = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
+
+    //For using Post Model;
+    const [selectedPost, setSelectedPost] = useState(null);
 
     // 获取当前用户信息
     useEffect(() => {
@@ -289,6 +293,13 @@ const Home = () => {
         navigate('/create-post');
     };
 
+    /**
+     * Handle post clicked
+     */
+    const handlePostClick = (post) => {
+        setSelectedPost(post);
+    };
+
     return (
         <div className="home-main-container">
             {/* Navigation bar at the top */}
@@ -404,6 +415,7 @@ const Home = () => {
                                     postData={post}
                                     currentUser={currentUser}
                                     onFollow={handleFollow}
+                                    onClick={() => handlePostClick(post)}
                                 />
                             ))}
                         </div>
@@ -418,6 +430,9 @@ const Home = () => {
                     </InfiniteScroll>
                 </div>
             </div>
+            {selectedPost && (
+                <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+            )}
 
             {/* Floating action button for creating new posts */}
             <button className="fab" onClick={handleCreatePost}>+</button>
