@@ -231,12 +231,20 @@ const Chat = () => {
                 const chats = await response.json();
                 console.log(`Fetched ${chats.length} conversations`);
                 
-                // Rest of the function remains the same...
-                const standardizedChats = chats.map(standardizeChat);
-                setConversations(standardizedChats);
+                // Deduplicate chats based on chat ID
+                const uniqueChats = chats.reduce((acc, chat) => {
+                    const chatId = getChatId(chat);
+                    if (chatId && !acc.some(existingChat => getChatId(existingChat) === chatId)) {
+                        acc.push(standardizeChat(chat));
+                    }
+                    return acc;
+                }, []);
+                
+                console.log(`After deduplication: ${uniqueChats.length} unique conversations`);
+                setConversations(uniqueChats);
                 
                 const unreadMap = {};
-                standardizedChats.forEach(chat => {
+                uniqueChats.forEach(chat => {
                     const chatId = getChatId(chat);
                     if (chatId) {
                         unreadMap[chatId] = chat.unreadCount || 0;
@@ -245,7 +253,7 @@ const Chat = () => {
                 setUnreadCounts(unreadMap);
 
                 if (socketRef.current && socketRef.current.connected) {
-                    standardizedChats.forEach(chat => {
+                    uniqueChats.forEach(chat => {
                         const chatId = getChatId(chat);
                         if (isValidObjectId(chatId)) {
                             socketRef.current.emit('join_chat', chatId);
@@ -977,7 +985,18 @@ const Chat = () => {
             return chat.groupInfo?.name || 'Unnamed Group';
         }
         const otherParticipant = getOtherParticipant(chat);
-        return otherParticipant?.username || 'Unknown User';
+        if (!otherParticipant) return 'Unknown User';
+        
+        const displayName = otherParticipant.profile?.displayName || otherParticipant.username;
+        const username = otherParticipant.username;
+        
+        // If displayName is same as username, just show username
+        if (displayName === username) {
+            return username;
+        }
+        
+        // Otherwise show "DisplayName (username)" format
+        return `${displayName} (${username})`;
     };
 
     /**
@@ -1352,7 +1371,12 @@ const Chat = () => {
                                 </div>
                             ) : (
                                 <div className="user-list">
-                                    {filteredUsers.map(user => (
+                                {filteredUsers.map(user => {
+                                    const displayName = user.profile?.displayName || user.username;
+                                    const username = user.username;
+                                    const userDisplayText = displayName === username ? username : `${displayName} (${username})`;
+                                    
+                                    return (
                                         <div
                                             key={user._id}
                                             className="user-item"
@@ -1360,22 +1384,23 @@ const Chat = () => {
                                         >
                                             <div className="user-avatar">
                                                 {user.profile?.profilePicture?.url ? (
-                                                    <img src={user.profile.profilePicture.url} alt={user.username} />
+                                                    <img src={user.profile.profilePicture.url} alt={userDisplayText} />
                                                 ) : (
                                                     <div className="chat-avatar-placeholder">
-                                                        {(user.profile?.displayName || user.username).charAt(0).toUpperCase()}
+                                                        {displayName.charAt(0).toUpperCase()}
                                                     </div>
                                                 )}
                                                 {isUserOnline(user._id) && <div className="online-indicator"></div>}
                                             </div>
                                             <div className="user-info">
                                                 <span className="username">
-                                                    {user.profile?.displayName || user.username}
+                                                    {userDisplayText}
                                                 </span>
                                                 {isUserOnline(user._id) && <span className="online-text">Online</span>}
                                             </div>
                                         </div>
-                                    ))}
+                                    );
+                                })}
                                 </div>
                             )}
                         </div>

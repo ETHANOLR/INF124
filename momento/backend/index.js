@@ -1490,7 +1490,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
             'account.status': 'active'
         };
         
-        // Add search functionality
+        // Add search functionality for both username and displayName
         if (search && search.trim()) {
             query.$or = [
                 { username: new RegExp(search.trim(), 'i') },
@@ -1498,7 +1498,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
             ];
         }
 
-        // Fetch users with essential fields
+        // Fetch users with essential fields including displayName
         const users = await User.find(query)
             .select('username profile.profilePicture profile.displayName activity.isOnline activity.lastActiveAt')
             .limit(parseInt(limit))
@@ -2012,26 +2012,34 @@ app.get('/api/users/me/liked-posts/count', authenticateToken, async (req, res) =
 app.get('/api/chats', authenticateToken, async (req, res) => {
     try {
         const chats = await Chat.find({ participants: req.user.userId })
-            .populate('participants', 'username profile.profilePicture activity.isOnline activity.lastActiveAt')
+            .populate('participants', 'username profile.profilePicture profile.displayName activity.isOnline activity.lastActiveAt')
             .populate('lastMessage')
             .sort({ lastActivity: -1 });
 
-        const chatsWithUnread = await Promise.all(chats.map(async (chat) => {
-            const unreadCount = await Message.countDocuments({
-                chat: chat._id,
-                'readBy.user': { $ne: req.user.userId },
-                isDeleted: false
-            });
+        // Add deduplication logic on backend as well
+        const uniqueChats = [];
+        const seenChatIds = new Set();
 
-            // Standardize chat object with consistent ID fields
-            return {
-                ...standardizeChatObject(chat),
-                unreadCount
-            };
-        }));
+        for (const chat of chats) {
+            const chatId = chat._id.toString();
+            if (!seenChatIds.has(chatId)) {
+                seenChatIds.add(chatId);
+                
+                const unreadCount = await Message.countDocuments({
+                    chat: chat._id,
+                    'readBy.user': { $ne: req.user.userId },
+                    isDeleted: false
+                });
 
-        console.log(`Fetched ${chatsWithUnread.length} chats for user ${req.user.userId}`);
-        res.json(chatsWithUnread);
+                uniqueChats.push({
+                    ...standardizeChatObject(chat),
+                    unreadCount
+                });
+            }
+        }
+
+        console.log(`Fetched ${uniqueChats.length} unique chats for user ${req.user.userId}`);
+        res.json(uniqueChats);
     } catch (error) {
         console.error('Get chats error:', error);
         res.status(500).json({ message: 'Failed to fetch chats' });
