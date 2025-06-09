@@ -547,7 +547,7 @@ const PostModal = ({ post, onClose }) => {
         </div>
         <div className="modal-content-section">
             <div className="modal-header">
-                <h2 className="post-title">{detailedPost.title}</h2>
+                <h2 className="model-post-title">{detailedPost.title}</h2>
                 <div className="post-meta">
                     <span className="post-category">{detailedPost.category}</span>
                     <span className="post-date">{formatDate(detailedPost.createdAt)}</span>
