@@ -71,6 +71,7 @@ Momento is a powerful social media platform designed to provide a seamless user 
 - **Profile**: User information and content management
 - **Search Page**: Multi-functional search and filtering system
 - **Settings Page**: Account, privacy, and notification preference management
+- **Post Detail Page**: Shows the author's profile and post location (Country-City)
 
 ## User Flow
 
@@ -86,30 +87,44 @@ Momento is a powerful social media platform designed to provide a seamless user 
 ### Core Technologies
 - **Frontend Framework**: React.js
 - **Routing**: React Router DOM
+- **Backend**: Node.js + Express
+- **Database**: MongoDB with Mongoose
+- **Authentication**: JWT-based login system
+- **WebSocket**: Real-time chat powered by Socket.IO
+- **Geolocation**: OpenCage API for IP-based location resolution
 
 ### Development Setup
-1. Clone the repository:
+1. **Clone the repository**:
    ```
    git clone [repository URL]
    cd momento
    ```
 
-2. Install dependencies:
+2. **Install frontend dependencies**:
    ```
+   cd frontend
    npm install
-   npm install react-router-dom
    ```
 
-3. Start development server:
+3. **Install backend dependencies**:
    ```
-   npm start
+   cd ../backend
+   npm install
    ```
 
+4. **Run the app**:
+   - Frontend:
+     ```
+     npm start
+     ```
+   - Backend:
+     ```
+     npm run dev
+     ```
 
 ## Development Status
 
 Momento is currently in the development stage. The frontend interface design has been completed, and backend functionality is being implemented. We welcome feedback from developers and test users to help us build a better product.
-
 
 ### Feature Implementation Status
 
@@ -127,7 +142,7 @@ Momento is currently in the development stage. The frontend interface design has
 #### Frontend Functionality
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
-| Routing Setup | ⏳ In Progress | Basic routes established |
+| Routing Setup | ✅ Completed | All major pages connected |
 | Form Validation | ⏳ In Progress | Client-side validation for inputs |
 | Dark/Light Mode | 🔄 Planned | Theme switching functionality |
 | Media Preview | ⏳ In Progress | Image/video preview in post creation |
@@ -136,17 +151,16 @@ Momento is currently in the development stage. The frontend interface design has
 #### Backend Integration
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
-| User Authentication | 🔄 Planned | UI ready, backend integration pending |
-| Content Creation API | 🔄 Planned | Form submission to be connected |
-| Real-time Updates | 🔄 Planned | Socket integration pending |
+| User Authentication | ✅ Completed | JWT-based login/register |
+| Content Creation API | ✅ Completed | Posts, media, and location stored |
+| Real-time Updates | ✅ Completed | WebSocket integrated |
 | Search Functionality | 🔄 Planned | API integration pending |
-| User Interactions | 🔄 Planned | Like, comment, follow actions pending |
+| User Interactions | ✅ Completed | Like, comment, follow actions complete |
 
 #### Legend
 - ✅ Completed: Feature is implemented and working
 - ⏳ In Progress: Currently being developed
 - 🔄 Planned: On the roadmap but development has not started
-
 
 ---
 
