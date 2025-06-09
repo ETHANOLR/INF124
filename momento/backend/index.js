@@ -875,7 +875,8 @@ app.get('/api/posts', async (req, res) => {
  */
 app.get('/api/posts/location-stats', async (req, res) => {
     try {
-      const stats = await Post.aggregate([
+        const topN = Math.max(parseInt(req.query.limit, 10) || 10, 1);  // Defult to 10 if not specified or invalid
+        const stats = await Post.aggregate([
         {
           $match: {
             'status.published': true,
@@ -894,6 +895,7 @@ app.get('/api/posts/location-stats', async (req, res) => {
           }
         },
         { $sort: { count: -1, _id: 1 } },
+        { $limit: topN },
         {
           $project: {
             _id:     0,
