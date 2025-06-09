@@ -630,6 +630,7 @@
     max-height: 80vh;
     overflow: hidden;
     animation: slideIn 0.3s ease-out;
+    padding: 10px 50px;
 }
 
 @keyframes slideIn {
@@ -644,17 +645,23 @@
 }
 
 .modal-header {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
+    padding: 30px 0px;
     border-bottom: 1px solid #eee;
+    position: relative;
 }
 
 .modal-header h3 {
     margin: 0;
     font-size: 18px;
     color: #333;
+
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .close-button {
@@ -671,6 +678,10 @@
     justify-content: center;
     border-radius: 4px;
     transition: all 0.2s;
+    
+    position: absolute;  
+    top: 25%;                   
+    right: 0px;            
 }
 
 .close-button:hover {
@@ -679,6 +690,7 @@
 }
 
 .modal-body {
+    width: 100%;
     padding: 20px;
     max-height: 60vh;
     overflow-y: auto;
