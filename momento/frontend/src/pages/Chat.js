@@ -1004,7 +1004,7 @@ const Chat = () => {
                                                     alt={getChatDisplayName(conversation)}
                                                 />
                                             ) : (
-                                                <div className="avatar-placeholder">
+                                                <div className="chat-avatar-placeholder">
                                                     {getChatDisplayName(conversation).charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -1052,7 +1052,7 @@ const Chat = () => {
                                                 alt={getChatDisplayName(selectedChat)}
                                             />
                                         ) : (
-                                            <div className="avatar-placeholder">
+                                            <div className="chat-avatar-placeholder">
                                                 {getChatDisplayName(selectedChat).charAt(0).toUpperCase()}
                                             </div>
                                         )}
@@ -1214,7 +1214,7 @@ const Chat = () => {
                                                 {user.profile?.profilePicture?.url ? (
                                                     <img src={user.profile.profilePicture.url} alt={user.username} />
                                                 ) : (
-                                                    <div className="avatar-placeholder">
+                                                    <div className="chat-avatar-placeholder">
                                                         {(user.profile?.displayName || user.username).charAt(0).toUpperCase()}
                                                     </div>
                                                 )}
