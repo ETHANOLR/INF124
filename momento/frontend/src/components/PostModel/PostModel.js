@@ -9,8 +9,6 @@ import ShareModal from '../ShareModal/ShareModal';
 const API_CONFIG = process.env.REACT_APP_API_URL || 
   (window.location.hostname === 'localhost' ? 'http://localhost:4000' : 'https://api.momento.lifestyle');
 
-
-
 /**
  * API Services
  */
@@ -137,10 +135,13 @@ const PostModal = ({ post, onClose }) => {
   const navigate = useNavigate();
   const [detailedPost, setDetailedPost] = useState(null);
   const [commentInput, setCommentInput] = useState('');
+  
   // Use AuthContext for consistent user state management
   const { currentUser, authToken, logout } = useContext(AuthContext);
 
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
 
   // Image gallery state
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -165,7 +166,7 @@ const PostModal = ({ post, onClose }) => {
     fetchPostDetail();
   }, [post]);
 
-    // Handle keyboard navigation in modal
+  // Handle keyboard navigation in modal
   useEffect(() => {
       const handleKeyPress = (e) => {
           if (!showImageModal) return;
@@ -182,6 +183,18 @@ const PostModal = ({ post, onClose }) => {
       window.addEventListener('keydown', handleKeyPress);
       return () => window.removeEventListener('keydown', handleKeyPress);
   }, [showImageModal, post]);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   if (!post || !detailedPost) return null;
 
@@ -200,7 +213,7 @@ const PostModal = ({ post, onClose }) => {
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
-};
+  };
 
   // Formatting Dates
   const formatDate = (dateString) => {
@@ -212,7 +225,7 @@ const PostModal = ({ post, onClose }) => {
         hour: '2-digit',
         minute: '2-digit'
     });
-};
+  };
 
   // Handling follow/unfollow
   const handleFollowClicked = async () => {
@@ -226,15 +239,27 @@ const PostModal = ({ post, onClose }) => {
         return;
     }
 
+    // Prevent multiple concurrent requests
+    if (isFollowLoading) return;
+
     try {
+        setIsFollowLoading(true);
+        console.log('Toggling follow for user:', detailedPost.author._id);
+        
         const result = await apiService.toggleFollow(detailedPost.author._id, authToken);
+        
+        console.log('Follow result:', result);
+        
+        // Update the post state with new follow status
         setDetailedPost(prevPost => ({
             ...prevPost,
             author: {
                 ...prevPost.author,
-                isFollowedByUser: result.following
+                isFollowedByUser: result.following,
+                followersCount: result.followersCount || prevPost.author.followersCount
             }
         }));
+        
     } catch (error) {
         console.error('Error following user:', error);
         // If authentication error, logout and redirect
@@ -242,6 +267,8 @@ const PostModal = ({ post, onClose }) => {
             logout();
             navigate('/login');
         }
+    } finally {
+        setIsFollowLoading(false);
     }
   };
 
@@ -255,8 +282,12 @@ const PostModal = ({ post, onClose }) => {
       console.error('Post ID is missing');
       return;
     }
+
+    // Prevent multiple concurrent requests
+    if (isLikeLoading) return;
     
     try {
+        setIsLikeLoading(true);
         const result = await apiService.toggleLike(detailedPost.id, authToken);
         setDetailedPost(prevPost => ({
           ...prevPost,
@@ -270,6 +301,8 @@ const PostModal = ({ post, onClose }) => {
           logout();
           navigate('/login');
       }
+    } finally {
+        setIsLikeLoading(false);
     }
   };
 
@@ -290,7 +323,7 @@ const PostModal = ({ post, onClose }) => {
 
     try {
         setIsSubmittingComment(true);
-        console.log('Submitting comment for post ID:', detailedPost.id); // Debug log
+        console.log('Submitting comment for post ID:', detailedPost.id);
         const result = await apiService.addComment(detailedPost.id, commentInput.trim(), authToken);
             
         // Update post status
@@ -348,7 +381,7 @@ const PostModal = ({ post, onClose }) => {
             navigate('/login');
         }
     }
-};
+  };
 
   // Image modal handlers
   const openImageModal = (index) => {
@@ -505,52 +538,62 @@ const PostModal = ({ post, onClose }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        {/* Close button */}
+        <button className="modal-close-btn" onClick={onClose}>×</button>
+        
         <div className="modal-image-section">
           {/* Enhanced Post Media Content */}
           {renderImageGallery()}
         </div>
         <div className="modal-content-section">
-            <div className="modal-scrollable">
+            <div className="modal-header">
                 <h2 className="post-title">{detailedPost.title}</h2>
-                <div className="modal-header">
-                  <span className="post-category">{detailedPost.category}</span>
-                  <span className="post-date">{formatDate(detailedPost.createdAt)}</span>
+                <div className="post-meta">
+                    <span className="post-category">{detailedPost.category}</span>
+                    <span className="post-date">{formatDate(detailedPost.createdAt)}</span>
                 </div>
-                <div className = "user">
-                  <div className="model-author-info">
-                    <div className="author-avatar">
-                      {detailedPost.author?.profile?.profilePicture?.url ? (
-                          <img 
-                              src={detailedPost.author.profile.profilePicture.url}
-                              alt={detailedPost.author.username}
-                          />
-                      ) : (
-                          <div className="avatar-placeholder">
-                              {detailedPost.author?.username?.[0]?.toUpperCase()}
-                           </div>
-                      )}
-                    </div>
-                    <div className="author-details">
-                        <h3 className="author-name">
-                            {detailedPost.author?.profile?.displayName || detailedPost.author?.username}
-                        </h3>
-                        <p className="author-username">@{detailedPost.author?.username}</p>
-                    </div>
-                  </div>
-                  {/* Follow button */}
-                  {currentUser && currentUser._id !== detailedPost.author._id && (
-                      <button 
-                          className={`follow-btn ${detailedPost.author.isFollowedByUser ? 'following' : ''}`}
-                          onClick={handleFollowClicked}
-                      >
-                          {detailedPost.author.isFollowedByUser ? 'Following' : 'Follow'}
-                      </button>
+            </div>
+            
+            <div className="user">
+              <div className="model-author-info">
+                <div className="author-avatar">
+                  {detailedPost.author?.profile?.profilePicture?.url ? (
+                      <img 
+                          src={detailedPost.author.profile.profilePicture.url}
+                          alt={detailedPost.author.username}
+                      />
+                  ) : (
+                      <div className="avatar-placeholder">
+                          {detailedPost.author?.username?.[0]?.toUpperCase() || 'U'}
+                       </div>
                   )}
                 </div>
-                <p className="post-content">{detailedPost.content}</p>
-                <div className="tags">
-                    {detailedPost.tags?.map(tag => <span className="tag" key={tag}>#{tag}</span>)}
+                <div className="author-details">
+                    <h3 className="author-name">
+                        {detailedPost.author?.profile?.displayName || detailedPost.author?.username}
+                    </h3>
+                    <p className="author-username">@{detailedPost.author?.username}</p>
                 </div>
+              </div>
+              {/* Follow button - only show if user is logged in and not viewing their own post */}
+              {currentUser && currentUser._id !== detailedPost.author._id && (
+                  <button 
+                      className={`follow-btn ${detailedPost.author.isFollowedByUser ? 'following' : ''}`}
+                      onClick={handleFollowClicked}
+                      disabled={isFollowLoading}
+                  >
+                      {isFollowLoading ? '...' : (detailedPost.author.isFollowedByUser ? 'Following' : 'Follow')}
+                  </button>
+              )}
+            </div>
+            
+            <div className="modal-scrollable">
+                <p className="post-content">{detailedPost.content}</p>
+                {detailedPost.tags && detailedPost.tags.length > 0 && (
+                    <div className="tags">
+                        {detailedPost.tags.map(tag => <span className="tag" key={tag}>#{tag}</span>)}
+                    </div>
+                )}
                 <div className="stats">
                     <span>{detailedPost.analytics?.views || 0} views</span>
                     <span>{detailedPost.likesCount || 0} likes</span>
@@ -561,6 +604,7 @@ const PostModal = ({ post, onClose }) => {
                     <button 
                         className={`action-btn like-btn ${detailedPost.isLikedByUser ? 'liked' : ''}`}
                         onClick={handleLikeClicked}
+                        disabled={isLikeLoading}
                     >
                         <span className="action-icon">
                             {detailedPost.isLikedByUser ? '❤️' : '🤍'}
@@ -578,27 +622,25 @@ const PostModal = ({ post, onClose }) => {
                     {detailedPost.engagement?.comments?.map((comment) => (
                         <div key={comment.id || comment._id} className="comment-item">
                             <div className="comment-header">
-                                <div className="comment-author">
-                                    <div className="comment-avatar">
-                                        {comment.user?.profile?.profilePicture?.url ? (
-                                            <img 
-                                                src={comment.user.profile.profilePicture.url}
-                                                alt={comment.user.username}
-                                            />
-                                        ) : (
-                                            <div className="avatar-placeholder">
-                                                {comment.user?.username?.[0]?.toUpperCase()}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="comment-meta">
-                                        <span className="comment-username">
-                                            {comment.user?.profile?.displayName || comment.user?.username}
-                                        </span>
-                                        <span className="comment-date">
-                                            {formatCommentDate(comment.createdAt)}
-                                        </span>
-                                    </div>
+                                <div className="comment-avatar">
+                                    {comment.user?.profile?.profilePicture?.url ? (
+                                        <img 
+                                            src={comment.user.profile.profilePicture.url}
+                                            alt={comment.user.username}
+                                        />
+                                    ) : (
+                                        <div className="avatar-placeholder">
+                                            {comment.user?.username?.[0]?.toUpperCase() || 'U'}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="comment-meta">
+                                    <span className="comment-username">
+                                        {comment.user?.profile?.displayName || comment.user?.username}
+                                    </span>
+                                    <span className="comment-date">
+                                        {formatCommentDate(comment.createdAt)}
+                                    </span>
                                 </div>
                             </div>
                             <div className="comment-content">
@@ -627,18 +669,14 @@ const PostModal = ({ post, onClose }) => {
                                 e.preventDefault();
                                 if (!commentInput.trim() || isSubmittingComment) return;
                                 handleComment();
-                                setCommentInput('');
                             }
                         }}
+                        disabled={isSubmittingComment}
                     />
                     <button 
                         className="send-button" 
                         disabled={!commentInput.trim() || isSubmittingComment}
-                        onClick={() => {
-                            if (!commentInput.trim() || isSubmittingComment) return;
-                            handleComment();
-                            setCommentInput('');
-                        }}
+                        onClick={handleComment}
                     >
                         {isSubmittingComment ? '...' : '↑'}
                     </button>
@@ -696,6 +734,7 @@ const PostModal = ({ post, onClose }) => {
                 </div>
             </div>
         )}
+        
         {/* Share Modal - Now using the reusable component */}
         <ShareModal 
             isOpen={showShareModal}
@@ -713,7 +752,6 @@ const PostModal = ({ post, onClose }) => {
             }}
         />
       </div>
-
     </div>
   );
 };
