@@ -438,8 +438,8 @@
     right: 20px;
 }
 
-.modal-counter {
-    position: absolute;
+.detail-modal-counter {
+    /* position: absolute; */
     top: 20px;
     left: 50%;
     transform: translateX(-50%);

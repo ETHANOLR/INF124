@@ -612,16 +612,16 @@ const PostDetail = () => {
                         </div>
 
                         {/* Post Statistics */}
-                        <div className="post-stats">
+                        <div className="postcard-stats">
                             <span>{post.analytics?.views || 0} views</span>
-                            <span>{post.likesCount || 0} likes</span>
-                            <span>{post.commentsCount || 0} comments</span>
-                            <span>{post.sharesCount || 0} shares</span>
+                            <span>{post.engagement?.likes?.length || 0} likes</span>
+                            <span>{post.engagement?.comments?.length || 0} comments</span>
+                            <span>{post.analytics?.shares || 0} shares</span>
                         </div>
 
                         {/* Interactive Buttons */}
                         <div className="post-actions">
-                            <button 
+                            <button
                                 className={`action-btn like-btn ${post.isLikedByUser ? 'liked' : ''}`}
                                 onClick={handleLike}
                             >
@@ -737,7 +737,7 @@ const PostDetail = () => {
                                 <button className="modal-nav modal-prev" onClick={prevImage}>‹</button>
                                 <button className="modal-nav modal-next" onClick={nextImage}>›</button>
                                 
-                                <div className="modal-counter">
+                                <div className="detail-modal-counter">
                                     {selectedImageIndex + 1} / {images.length}
                                 </div>
                                 

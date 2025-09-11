@@ -15,7 +15,7 @@
 }
 
 /* Sidebar Styles */
-.sidebar {
+.home-sidebar {
     width: 220px;
     background: white;
     border-radius: 10px;
@@ -221,10 +221,11 @@
         padding: 10px;
     }
 
-    .sidebar {
-        width: 100%;
+    .home-sidebar {
+        width: 50%;
         margin-bottom: 15px;
         position: static;
+
     }
 
     .home-section {
@@ -279,7 +280,7 @@
         background-color: #1a1a1a;
     }
 
-    .sidebar, .feed {
+    .home-sidebar, .feed {
         background-color: #2d2d2d;
         color: #e0e0e0;
     }

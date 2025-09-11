@@ -624,8 +624,11 @@ const Profile = () => {
                             alt={post.media.images[0].altText || post.title}
                             onError={(e) => {
                                 e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
-                            }}
+                                const sibling = e.target.nextSibling;
+                                if (sibling) {
+                                  sibling.style.display = 'flex';
+                                }                            
+                        }}
                         />
                     ) : (
                         <div className="post-placeholder">

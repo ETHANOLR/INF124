@@ -308,7 +308,7 @@ const Home = () => {
             {/* Main content area */}
             <div className="home-main-content">
                 {/* Sidebar with discovery options and categories */}
-                <div className="sidebar">
+                <div className="home-sidebar">
                     <div className="home-section">
                         <h3 className="home-section-title">Discover</h3>
                         <div 

@@ -213,9 +213,10 @@ function PostCard({ postData, currentUser, onFollow, onClick }) {
             
             {/* Post statistics */}
             <div className="postcard-stats">
-                <span>{post.likesCount || 0} likes</span>
-                <span>{post.commentsCount || 0} comments</span>
-                <span>{post.analytics?.views || 0} views</span>
+                <span>{postData.analytics?.views || 0} views</span>
+                <span>{postData.engagement?.likes?.length || 0} likes</span>
+                <span>{postData.engagement?.comments?.length || 0} comments</span>
+                <span>{postData.engagement?.shares?.length || 0} shares</span>
             </div>
         </div>
     </div>
